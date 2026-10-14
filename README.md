@@ -19,31 +19,88 @@ Darwin Garcia Andrade
 Dev Backend: 
 Cristian Santiago Moncada
 
-Alcance con moSCow
----------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|---------------------------------------------------------------
-|     Must · debe                                                           |     Should ·   debería                                                       |     Could ·   podría                              |     Won't · no   ahora                                     |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Registro e   inicio de sesión                                         |     Filtros por   horario, ubicación, tipo de empleo y programa académico    |     Guardar   ofertas como favoritas              |     Chat interno   entre estudiante y empleador            |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Perfil del   estudiante                                               |     Notificaciones   sobre nuevas ofertas                                    |     Compartir   ofertas                           |     Videollamadas   o entrevistas virtuales                |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Registro de   disponibilidad horaria                                  |     Notificaciones   sobre cambios en el estado de una postulación           |     Modo oscuro                                   |     Contratación   directa desde la aplicación             |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Publicación de   ofertas laborales                                    |     Historial de   postulaciones                                             |     Recomendación   de ofertas según el perfil    |     Firma de   contratos desde la aplicación               |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Búsqueda y   consulta de ofertas                                      |     Filtros para   organizar postulantes                                     |     Recordatorios   de postulaciones              |     Gestión de   pagos, salarios o nómina                  |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Visualización   del detalle de la oferta                              |     Edición y   actualización de ofertas publicadas                          |     Estadísticas   de postulaciones               |     Selección   automática de candidatos mediante IA       |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Postulación a   ofertas                                               |     Cierre   automático de ofertas vencidas                                  |     Geolocalización   de ofertas cercanas         |     Funcionamiento   como agencia de contratación          |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Envío de hoja   de vida                                               |                                                                              |                                                   |     Red social   profesional                               |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Consulta del   estado de la postulación                               |                                                                              |                                                   |     Integración   con otras plataformas de empleo          |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Consulta de   hojas de vida por parte del empleador                   |                                                                              |                                                   |     Gestión de   procesos posteriores a la contratación    |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Actualización   del estado de los candidatos                          |                                                                              |                                                   |                                                            |
-|---------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|------------------------------------------------------------|
-|     Persistencia   de usuarios, ofertas, hojas de vida y postulaciones    |                                                                              |                                                   |                                                            |
----------------------------------------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------|--------------------------------------------------------------
+<table>
+  <thead>
+    <tr>
+      <th>Must · Debe</th>
+      <th>Should · Debería</th>
+      <th>Could · Podría</th>
+      <th>Won't · No ahora</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Registro e inicio de sesión</td>
+      <td>Filtros por horario, ubicación, tipo de empleo y programa académico</td>
+      <td>Guardar ofertas como favoritas</td>
+      <td>Chat interno entre estudiante y empleador</td>
+    </tr>
+    <tr>
+      <td>Perfil del estudiante</td>
+      <td>Notificaciones sobre nuevas ofertas</td>
+      <td>Compartir ofertas</td>
+      <td>Videollamadas o entrevistas virtuales</td>
+    </tr>
+    <tr>
+      <td>Registro de disponibilidad horaria</td>
+      <td>Notificaciones sobre cambios en el estado de una postulación</td>
+      <td>Modo oscuro</td>
+      <td>Contratación directa desde la aplicación</td>
+    </tr>
+    <tr>
+      <td>Publicación de ofertas laborales</td>
+      <td>Historial de postulaciones</td>
+      <td>Recomendación de ofertas según el perfil</td>
+      <td>Firma de contratos desde la aplicación</td>
+    </tr>
+    <tr>
+      <td>Búsqueda y consulta de ofertas</td>
+      <td>Filtros para organizar postulantes</td>
+      <td>Recordatorios de postulaciones</td>
+      <td>Gestión de pagos, salarios o nómina</td>
+    </tr>
+    <tr>
+      <td>Visualización del detalle de la oferta</td>
+      <td>Edición y actualización de ofertas publicadas</td>
+      <td>Estadísticas de postulaciones</td>
+      <td>Selección automática de candidatos mediante IA</td>
+    </tr>
+    <tr>
+      <td>Postulación a ofertas</td>
+      <td>Cierre automático de ofertas vencidas</td>
+      <td>Geolocalización de ofertas cercanas</td>
+      <td>Funcionamiento como agencia de contratación</td>
+    </tr>
+    <tr>
+      <td>Envío de hoja de vida</td>
+      <td>-</td>
+      <td>-</td>
+      <td>Red social profesional</td>
+    </tr>
+    <tr>
+      <td>Consulta del estado de la postulación</td>
+      <td>-</td>
+      <td>-</td>
+      <td>Integración con otras plataformas de empleo</td>
+    </tr>
+    <tr>
+      <td>Consulta de hojas de vida por parte del empleador</td>
+      <td>-</td>
+      <td>-</td>
+      <td>Gestión de procesos posteriores a la contratación</td>
+    </tr>
+    <tr>
+      <td>Actualización del estado de los candidatos</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td>Persistencia de usuarios, ofertas, hojas de vida y postulaciones</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+    </tr>
+  </tbody>
+</table>
+

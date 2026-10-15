@@ -1,0 +1,14 @@
+**5.  Métricas de Calidad definidas para la app UNIEmpleo**
+
+| Heurística | Métrica que medir | Meta inicial |
+| :--- | :--- | :--- |
+| **1. Visibilidad del estado** | Usuarios que identifican correctamente si una postulación se envió y cuál es su estado | ≥ 90% |
+| **2. Correspondencia con el mundo real** | Usuarios que entienden correctamente términos, requisitos y estados de las ofertas | ≥ 90% |
+| **3. Control y libertad** | Usuarios que logran cancelar, volver o corregir una acción sin perder su progreso | ≥ 90% |
+| **4. Consistencia y estándares** | Acciones o etiquetas que generan confusión por diferencias entre pantallas | ≤ 5% de las tareas |
+| **5. Prevención de errores** | Errores evitables en tareas críticas, como enviar un archivo inválido o postularse dos veces | ≤ 2% de los intentos |
+| **6. Reconocimiento antes que recuerdo** | Usuarios que completan tareas con la información visible, sin tener que recordar datos de otra pantalla | ≥ 90% |
+| **7. Flexibilidad y eficiencia** | Tiempo para completar tareas frecuentes, como filtrar vacantes o revisar postulaciones | Reducir ≥ 20% entre el primer y segundo intento |
+| **8. Diseño estético y minimalista** | Usuarios que encuentran la acción principal de la pantalla en menos de 5 segundos | ≥ 90% |
+| **9. Recuperación ante errores** | Usuarios que entienden el mensaje y resuelven el error sin ayuda externa | ≥ 85%; recuperación mediana ≤ 30 s |
+| **10. Ayuda y documentación** | Usuarios que encuentran y usan la ayuda para resolver una duda frecuente | ≥ 85%; respuesta encontrada en ≤ 60 s |

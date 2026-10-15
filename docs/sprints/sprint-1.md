@@ -40,12 +40,21 @@ Que un estudiante pueda autenticarse con Google y que una empresa pueda registra
 
 ## 🔒 Requerimientos Técnicos a Tener en Cuenta
 
+### Backend (Laravel)
 - Usar `Laravel Socialite` para Google OAuth
 - Hash `bcrypt` para contraseñas de empresas y admin
 - `JobPostingPolicy` para controlar acceso a vacantes
 - Todos los inputs validados con clases `FormRequest`
 - Notificaciones implementando `ShouldQueue`
 - Logo de empresa: max 2MB, almacenado en Storage con symlink
+
+### Frontend (React Native)
+- Integrar flujo de Google OAuth con el backend Laravel
+- Navegación entre pantallas: panel estudiante, panel empresa, panel admin
+- Formularios controlados para registro, postulación y perfil
+- Listado paginado de vacantes con filtros
+- Manejo de estados de postulación en UI
+- Notificaciones push (push notifications) para cambios de estado
 
 ---
 

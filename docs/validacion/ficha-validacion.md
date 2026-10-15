@@ -9,7 +9,7 @@
 | Campo | Valor |
 |-------|-------|
 | Nombre | |
-| Rol | ☐ Estudiante UNIPAZ  ☐ Empresa  ☐ Egresado  ☐ Docente |
+| Rol | ☐ Estudiante UNIPAZ  ☐ Empresa  ☐ Administrador|
 | Programa académico | |
 | Semestre | |
 | Fecha | |

@@ -1,4 +1,4 @@
-# Requisitos — Bolsa de Empleo UNIPAZ (App Móvil)
+# Requisitos — Bolsa de Empleo UNIPAZ (React Native + Laravel)
 
 ## Requerimientos Funcionales
 

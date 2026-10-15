@@ -1,4 +1,4 @@
-# Requisitos — Bolsa de Empleo UNIPAZ (App Móvil)
+# Requisitos — Bolsa de Empleo UNIPAZ (React Native + Next.js)
 
 ## Requerimientos Funcionales
 
@@ -9,10 +9,10 @@
 | ID | Descripción |
 |----|-------------|
 | RF-01.1 | Registro de empresas con validación de email único, NIT opcional y estado inicial `"pending"`. |
-| RF-01.2 | Login de empresas y admin con email/contraseña. Hash bcrypt. Bloqueo si el usuario está inactivo. |
-| RF-01.3 | Autenticación de estudiantes exclusivamente vía Google OAuth 2.0 (Laravel Socialite). Creación automática del perfil si no existe. |
-| RF-01.4 | Middleware de rol (`role:admin|company|student`) en todas las rutas protegidas. Redireccionamiento al panel correcto post-login. |
-| RF-01.5 | Cierre de sesión seguro: logout con invalidación de sesión y regeneración de token CSRF. |
+| RF-01.2 | Login de empresas y admin con email/contraseña. Hash bcrypt/argon2. Bloqueo si el usuario está inactivo. |
+| RF-01.3 | Autenticación de estudiantes exclusivamente vía Google OAuth 2.0 (Google Sign-In en React Native / NextAuth en Next.js). Creación automática del perfil si no existe. |
+| RF-01.4 | Middleware de rol (`role:admin|company|student`) en todas las rutas y endpoints protegidos. Redireccionamiento / navegación al panel correcto post-login. |
+| RF-01.5 | Cierre de sesión seguro: logout con invalidación de token JWT / sesión segura. |
 
 ---
 
@@ -43,12 +43,12 @@
 
 | ID | Descripción |
 |----|-------------|
-| RF-04.1 | Un estudiante solo puede postularse una vez por vacante (restricción en DB y validación en servicio). |
+| RF-04.1 | Un estudiante solo puede postularse una vez por vacante (restricción en DB y validación en API). |
 | RF-04.2 | Si la vacante requiere CV, el campo `cv` es obligatorio. Se puede adjuntar uno nuevo o reutilizar el del perfil del estudiante. |
-| RF-04.3 | Los CVs se almacenan en disco privado (no accesibles directamente por URL). Solo se sirven mediante `Storage::download()` con autenticación. |
-| RF-04.4 | Al crear una postulación, se notifica al representante de la empresa (`NewApplicationNotification`) vía email y base de datos. |
-| RF-04.5 | La empresa puede actualizar el estado de la postulación: `pending → reviewed → interview → accepted|rejected`. Cada cambio notifica al estudiante. |
-| RF-04.6 | El campo `company_notes` es privado: no debe exponerse al estudiante en ninguna vista ni respuesta JSON. |
+| RF-04.3 | Los CVs se almacenan en almacenamiento privado (no accesibles directamente por URL pública). Solo se sirven mediante un endpoint autenticado en Next.js con headers de descarga segura. |
+| RF-04.4 | Al crear una postulación, se notifica al representante de la empresa vía email y registro en DB. |
+| RF-04.5 | La empresa puede actualizar el estado de la postulación: `pending → reviewed → interview → accepted|rejected`. Cada cambio notifica al estudiante (email + push notification). |
+| RF-04.6 | El campo `company_notes` es privado: no debe exponerse al estudiante en ninguna vista ni respuesta JSON de la API. |
 
 ---
 
@@ -57,10 +57,10 @@
 | ID | Descripción |
 |----|-------------|
 | RF-05.1 | Dashboard con KPIs: total estudiantes, empresas aprobadas, empresas pendientes, vacantes activas, total postulaciones. |
-| RF-05.2 | Gráfico mensual de postulaciones del año en curso. Compatible con SQLite, MySQL y PostgreSQL (expresiones de fecha dinámicas). |
+| RF-05.2 | Gráfico mensual de postulaciones del año en curso. Compatible con MySQL / PostgreSQL mediante consultas optimizadas de agregación en Prisma/SQL. |
 | RF-05.3 | Gestión de usuarios: listado paginado con filtros por rol y búsqueda. Toggle de activación/desactivación (excepto admins). |
 | RF-05.4 | Módulo de reportes: distribución de empresas por estado, postulaciones por estado, vacantes activas por área. |
-| RF-05.5 | ⚠️ **[PENDIENTE]** Exportación de reportes a Excel mediante `maatwebsite/laravel-excel` o similar. |
+| RF-05.5 | ⚠️ **[PENDIENTE]** Exportación de reportes a Excel mediante librería de Node.js (`exceljs` o `xlsx`). |
 
 ---
 
@@ -70,11 +70,11 @@
 
 | Requerimiento | Especificación |
 |---------------|----------------|
-| Autorización a nivel modelo | Implementar `JobPostingPolicy` y `ApplicationPolicy` con `Gate` para evitar que una empresa acceda a recursos de otra. |
-| Validación con FormRequests | Toda validación de input debe vivir en clases `FormRequest`, no en controladores, para separar responsabilidades y facilitar testing. |
-| CVs en disco privado | Los archivos de CV no deben estar en `storage/app/public`. Usar disco `local` y servir mediante rutas autenticadas con `Storage::download()`. |
-| Protección CSRF | Todas las rutas POST/PUT/DELETE protegidas por el middleware `VerifyCsrfToken` de Laravel (por defecto activo). |
-| Rate Limiting | Aplicar throttle en rutas de autenticación: `throttle:5,1` en login y register para mitigar ataques de fuerza bruta. |
+| Autorización a nivel API | Middleware y utilidades de autorización en Next.js Route Handlers para verificar roles y pertenencia de recursos (ej: empresa solo edita sus vacantes). |
+| Validación con Zod | Toda validación de input en peticiones de API debe realizarse con esquemas Zod en los Route Handlers de Next.js, garantizando tipado estricto. |
+| CVs en almacenamiento privado | Los archivos de CV se almacenan en directorio privado del servidor o bucket S3 privado, servidos únicamente vía endpoint autenticado con streaming seguro. |
+| Protección de endpoints y JWT | Autenticación basada en JWT / Bearer Tokens o sesiones seguras HTTP-only cookies gestionadas por NextAuth.js. |
+| Rate Limiting | Aplicar throttle / rate limiting en rutas de autenticación de Next.js (ej: con `@upstash/ratelimit` o middleware) para mitigar ataques de fuerza bruta. |
 
 ---
 
@@ -82,9 +82,9 @@
 
 | Requerimiento | Especificación |
 |---------------|----------------|
-| Eager Loading | Todas las consultas con relaciones deben usar `with()`. Ej: `JobPosting::with('company')`, `Application::with(['user','jobPosting.company'])`. |
-| Paginación | Todos los listados paginados: `paginate(12)` para vacantes, `paginate(15)` para empresas, `paginate(20)` para usuarios. |
-| Notificaciones en cola | Activar `QUEUE_CONNECTION=database` en producción y ejecutar `php artisan queue:work`. Las 3 notificaciones ya implementan `ShouldQueue`. |
+| Consultas optimizadas | Todas las consultas con relaciones en Prisma deben usar `include` selectivo para evitar N+1 queries. Ej: `prisma.jobPosting.findMany({ include: { company: true } })`. |
+| Paginación en API | Todos los listados paginados mediante `take` y `skip`: 12 para vacantes, 15 para empresas, 20 para usuarios. |
+| Notificaciones en segundo plano | Envío asíncrono de emails y push notifications mediante cola de tareas (BullMQ o micro-tareas serverless). |
 | Índices de DB | Índices recomendados: `users(role)`, `users(email)`, `companies(status)`, `job_postings(status, deadline)`, `applications(user_id, job_posting_id)`. |
 
 ---
@@ -93,6 +93,6 @@
 
 | Requerimiento | Especificación |
 |---------------|----------------|
-| Service Layer | Crear `ApplicationService` para encapsular: validar duplicado, verificar vacante activa, subir CV, crear `Application`, disparar notificación. |
-| Tests de Feature | Cobertura mínima: estudiante no puede postular dos veces, empresa no edita vacante ajena, admin aprueba empresa y se notifica. |
-| Seeders de desarrollo | Factories para `User`, `Company`, `JobPosting`, `Application` con estados variados para facilitar el desarrollo y testing manual. |
+| Service / Lib Layer | Funciones modulares en `src/services` o `src/lib` en Next.js para encapsular lógica de negocio: validar duplicados, subir CVs, crear `Application` y notificar. |
+| Tests de Integración | Cobertura mínima con Jest/Vitest: estudiante no puede postular dos veces, empresa no edita vacante ajena, admin aprueba empresa y se notifica. |
+| Seeders con Prisma | Script `prisma/seed.ts` para poblar usuarios, empresas, vacantes y aplicaciones con datos de prueba realistas. |

@@ -48,10 +48,10 @@
 
 | Criterio | Evidencia | ✅/❌ |
 |----------|-----------|-------|
-| CVs NO accesibles por URL directa | — | — |
-| Validaciones en `FormRequest` (no en controladores) | — | — |
-| Rutas POST/PUT/DELETE protegidas por CSRF | — | — |
-| Eager loading en consultas con relaciones | — | — |
+| CVs NO accesibles por URL directa (streaming seguro autenticado) | — | — |
+| Validaciones con esquemas Zod en Route Handlers (no lógica suelta) | — | — |
+| Endpoints protegidos por token JWT / Bearer o sesión segura | — | — |
+| Optimización de consultas con relaciones (Prisma `include`) | — | — |
 
 ---
 

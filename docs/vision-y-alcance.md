@@ -1,4 +1,4 @@
-# Visión y Alcance — Bolsa de Empleo UNIPAZ (App Móvil)
+# Visión y Alcance — Bolsa de Empleo UNIPAZ (React Native + Next.js)
 
 ## Visión del Producto
 
@@ -16,12 +16,12 @@ Lograr que los estudiantes de UNIPAZ puedan **encontrar y postularse a ofertas l
 
 ## Roles del Equipo
 
-| Rol | Nombre |
-|-----|--------|
-| Product Owner | Andres Ferney Garcia Ramirez |
-| Scrum Master | Juan Jose Figueroa Ayala |
-| Dev Frontend | Darwin Garcia Andrade |
-| Dev Backend | Cristian Santiago Moncada |
+| Rol | Nombre | Tecnología |
+|-----|--------|------------|
+| Product Owner | Andres Ferney Garcia Ramirez | — |
+| Scrum Master | Juan Jose Figueroa Ayala | — |
+| Dev Frontend | Darwin Garcia Andrade | React Native |
+| Dev Backend | Cristian Santiago Moncada | Next.js |
 
 ---
 

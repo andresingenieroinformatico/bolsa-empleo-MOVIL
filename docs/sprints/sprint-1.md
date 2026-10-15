@@ -40,12 +40,21 @@ Que un estudiante pueda autenticarse con Google y que una empresa pueda registra
 
 ## 🔒 Requerimientos Técnicos a Tener en Cuenta
 
-- Usar `Laravel Socialite` para Google OAuth
+### Backend (Next.js)
+- Usar `NextAuth.js` / Google OAuth 2.0 API para verificación de tokens de estudiantes
 - Hash `bcrypt` para contraseñas de empresas y admin
-- `JobPostingPolicy` para controlar acceso a vacantes
-- Todos los inputs validados con clases `FormRequest`
-- Notificaciones implementando `ShouldQueue`
-- Logo de empresa: max 2MB, almacenado en Storage con symlink
+- Middleware / guards de autorización para controlar acceso a vacantes
+- Todos los inputs validados con esquemas `Zod`
+- Notificaciones procesadas de forma asíncrona (BullMQ / Nodemailer)
+- Logo de empresa: max 2MB, subida multipart y almacenamiento seguro
+
+### Frontend (React Native)
+- Integrar flujo de Google OAuth con el backend Next.js
+- Navegación entre pantallas: panel estudiante, panel empresa, panel admin
+- Formularios controlados para registro, postulación y perfil
+- Listado paginado de vacantes con filtros
+- Manejo de estados de postulación en UI
+- Notificaciones push (Expo Push Notifications) para cambios de estado
 
 ---
 

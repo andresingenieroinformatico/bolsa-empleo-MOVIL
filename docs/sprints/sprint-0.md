@@ -12,7 +12,8 @@
 - [x] Levantar requerimientos funcionales y no funcionales
 - [x] Crear el backlog inicial priorizado
 - [x] Diseñar el diagrama entidad-relación de la base de datos
-- [ ] Configurar entorno de desarrollo (Laravel + base de datos)
+- [ ] Configurar entorno de desarrollo React Native (Node.js, Expo o CLI)
+- [ ] Configurar entorno de desarrollo Next.js (Node.js, npm/pnpm, Prisma/DB)
 - [ ] Configurar control de versiones (Git + ramas)
 - [ ] Definir convenciones de código
 
@@ -24,8 +25,8 @@
 |-----|--------|
 | Product Owner | Andres Ferney Garcia Ramirez |
 | Scrum Master | Juan Jose Figueroa Ayala |
-| Dev Frontend | Darwin Garcia Andrade |
-| Dev Backend | Cristian Santiago Moncada |
+| Dev Frontend | Darwin Garcia Andrade | React Native |
+| Dev Backend | Cristian Santiago Moncada | Next.js |
 
 ---
 
@@ -46,7 +47,7 @@
 
 - La autenticación de estudiantes se hará **exclusivamente** con Google OAuth 2.0
 - Las empresas usan email/contraseña convencional
-- El stack es **Laravel** (backend) + **App Móvil** (frontend)
+- El stack es **React Native** (app móvil) + **Next.js** (API REST backend)
 - Los archivos de CV deben estar en disco **privado** del servidor
 
 ---

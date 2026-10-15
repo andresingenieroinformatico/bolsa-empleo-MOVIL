@@ -8,12 +8,12 @@ El proyecto sigue la metodología **Scrum** con sprints de duración fija.
 
 ## Roles
 
-| Rol | Responsable |
-|-----|-------------|
-| Product Owner | Andres Ferney Garcia Ramirez |
-| Scrum Master | Juan Jose Figueroa Ayala |
-| Dev Frontend | Darwin Garcia Andrade |
-| Dev Backend | Cristian Santiago Moncada |
+| Rol | Responsable | Tecnología |
+|-----|-------------|------------|
+| Product Owner | Andres Ferney Garcia Ramirez | — |
+| Scrum Master | Juan Jose Figueroa Ayala | — |
+| Dev Frontend | Darwin Garcia Andrade | **React Native** |
+| Dev Backend | Cristian Santiago Moncada | **Next.js** |
 
 ---
 
@@ -107,8 +107,23 @@ Incremento de Producto
 
 ## Reglas de Validación y Seguridad
 
-- Toda validación de input → clases `FormRequest` (nunca en controladores)
-- CVs → disco privado, servidos solo con `Storage::download()` + autenticación
+- Toda validación de input → middlewares / validadores en Next.js API Routes
+- CVs → almacenados en servidor privado, servidos solo por rutas autenticadas
 - `company_notes` → nunca expuesto al estudiante
-- Login → `throttle:5,1` contra fuerza bruta
-- Todas las rutas POST/PUT/DELETE → protegidas con `VerifyCsrfToken`
+- Login → rate limiting en API Routes contra fuerza bruta
+- Todas las rutas protegidas → validación de sesión con NextAuth.js o JWT
+
+---
+
+## 🛠️ Stack Técnico
+
+| Capa | Tecnología |
+|------|------------|
+| App Móvil (Frontend) | **React Native** |
+| API REST (Backend) | **Next.js (Node.js)** |
+| Autenticación estudiantes | Google OAuth 2.0 (NextAuth.js) |
+| Autenticación empresas/admin | Email + contraseña con NextAuth.js |
+| Base de datos | PostgreSQL / MySQL (via Prisma ORM o similar) |
+| Almacenamiento de archivos | Disco privado del servidor / S3 compatible |
+| Notificaciones | Nodemailer / SendGrid (email) + DB |
+| Colas de trabajo | BullMQ o similar (Node.js) |

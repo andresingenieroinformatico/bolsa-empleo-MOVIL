@@ -104,3 +104,19 @@ Cristian Santiago Moncada
   </tbody>
 </table>
 
+---
+
+## 📚 Documentación del Proyecto
+
+Toda la documentación técnica, funcional y de gestión ágil (Scrum) se encuentra disponible en la carpeta `docs/`:
+
+- [Documentación General (React Native + Next.js)](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/documentacion-general-movil.md): Arquitectura, endpoints de API, modelos Prisma, seguridad, variables de entorno y despliegue.
+- [Visión y Alcance](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/vision-y-alcance.md): Propuesta de valor, objetivos y matriz MoSCoW.
+- [Requisitos Funcionales y No Funcionales](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/requisitos.md): Especificación detallada de requerimientos.
+- [Flujo de Trabajo](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/flujo-de-trabajo.md): Metodología Scrum, diagrama de estados y convenciones Git.
+- [Product Backlog](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/backlog.md): Épicas e historias de usuario (HU-01 a HU-20).
+- [Tablero Kanban](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/tablero.md): Estado de tareas por sprint.
+- [Criterios de Aceptación (Gherkin)](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/criterios/): Escenarios `.feature` de cada historia de usuario.
+- [Sprint 0](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/sprints/sprint-0.md) y [Sprint 1](file:///c:/Users/Andres%20Garcia/Desktop/PROGRAMACIÓN/proyectos/bolsa-empleo-MOVIL/docs/sprints/sprint-1.md): Planificación y metas por sprint.
+
+

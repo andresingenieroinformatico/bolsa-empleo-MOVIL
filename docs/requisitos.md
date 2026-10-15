@@ -6,7 +6,7 @@ Los estudiantes del Instituto Universitario de la Paz (UNIPAZ) en Barrancabermej
 
 Este problema se enmarca directamente en el **ODS 8: Trabajo decente y crecimiento económico**, en especial:
 - **Meta 8.5:** «De aquí a 2030, lograr el empleo pleno y productivo y el trabajo decente para todas las mujeres y los hombres, incluidos los jóvenes y las personas con discapacidad, así como la igualdad de remuneración por trabajo de igual valor».
-- **Meta 8.6:** «De aquí a 2030, reducir sustancialmente la proporción de jóvenes que no están empleados y no cursan estudios ni reciben capacitación».
+- **Meta 8.6:** «De aquí a 2020, reducir sustancialmente la proporción de jóvenes que no están empleados y no cursan estudios ni reciben capacitación».
 - Vinculación complementaria con el **ODS 4: Educación de calidad** (meta 4.4: competencias técnicas y profesionales para el empleo). Detalle en `vision-y-alcance.md`.
 
 ---

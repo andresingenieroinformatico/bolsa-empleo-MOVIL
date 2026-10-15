@@ -4,7 +4,7 @@ Matriz de Evaluación Heurística y Métricas de Usabilidad
 
 | ID      | Heurística de Usabilidad | Indicador / KPI | Métrica a Medir | Meta Inicial |
 | :-:     | :--- | :--- | :--- | :-: |
-| **H1**  | **Visibilidad del estado del sistema** | Tasa de visibilidad de estado | % de usuarios que identifican correctamente si una postulación se envió y cuál es su estado actual | `≥ 90%` |
+| **H1**  | **Visibilidad del estado del sistema** | Tasa de visibilidad del estado | % de usuarios que identifican correctamente si una postulación se envió y cuál es su estado actual | `≥ 90%` |
 | **H2**  | **Relación entre el sistema y el mundo real** | Comprensión del lenguaje | % de usuarios que entienden correctamente los términos, requisitos y estados de las ofertas | `≥ 90%` |
 | **H3**  | **Control y libertad del usuario** | Tasa de reversibilidad | % de usuarios que logran cancelar, volver atrás o corregir una acción sin perder su progreso | `≥ 90%` |
 | **H4**  | **Consistencia y estándares** | Tasa de confusión por interfaz | % de tareas con confusión por diferencias de diseño o nomenclatura entre pantallas | `≤ 5%` |

@@ -1,0 +1,16 @@
+### 5.  Métricas de Calidad definidas para la app UNIEmpleo
+
+Matriz de Evaluación Heurística y Métricas de Usabilidad
+
+| ID | Heurística de Usabilidad | Indicador / KPI | Métrica a Medir | Meta Inicial |
+| :-: | :--- | :--- | :--- | :-: |
+| **H1** | **Visibilidad del estado del sistema** | Tasa de visibilidad de estado | % de usuarios que identifican correctamente si una postulación se envió y cuál es su estado actual | `≥ 90%` |
+| **H2** | **Relación entre el sistema y el mundo real** | Comprensión del lenguaje | % de usuarios que entienden correctamente los términos, requisitos y estados de las ofertas | `≥ 90%` |
+| **H3** | **Control y libertad del usuario** | Tasa de reversibilidad | % de usuarios que logran cancelar, volver atrás o corregir una acción sin perder su progreso | `≥ 90%` |
+| **H4** | **Consistencia y estándares** | Tasa de confusión por interfaz | % de tareas con confusión por diferencias de diseño o nomenclatura entre pantallas | `≤ 5%` |
+| **H5** | **Prevención de errores** | Tasa de errores críticos evitables | % de intentos con fallos que el sistema debió prevenir (ej. adjuntar formato inválido o duplicar postulación) | `≤ 2%` |
+| **H6** | **Reconocer antes que recordar** | Eficiencia por carga cognitiva | % de usuarios que completan tareas usando la información visible en pantalla sin memorizar datos previos | `≥ 90%` |
+| **H7** | **Flexibilidad y eficiencia de uso** | Reducción de tiempo (*Time on Task*) | % de tiempo ahorrado al realizar tareas frecuentes (ej. filtrar vacantes) entre el 1.º y 2.º intento | `≥ 20%` |
+| **H8** | **Diseño estético y minimalista** | Tiempo del primer clic (*First Click Time*) | % de usuarios que identifican y hacen clic en la acción principal de la pantalla en menos de 5 segundos | `≥ 90%` |
+| **H9** | **Reconocer, diagnosticar y recuperarse de errores** | Tasa y tiempo de autorrecuperación | % de usuarios que entienden el mensaje de error y resuelven el problema de forma autónoma | `≥ 85%`<br>*(≤ 30 s)* |
+| **H10** | **Ayuda y documentación** | Efectividad y tiempo de ayuda | % de usuarios que resuelven una duda frecuente utilizando la sección de soporte/documentación | `≥ 85%`<br>*(≤ 60 s)* |

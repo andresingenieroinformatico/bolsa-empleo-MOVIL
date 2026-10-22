@@ -4,7 +4,10 @@
 node_modules/
 /.vscode
 /assets/
-/scripts
+/scripts/
+/.gitignore
+/UniEmpleo/.claude
+
 
 # Expo
 .expo/

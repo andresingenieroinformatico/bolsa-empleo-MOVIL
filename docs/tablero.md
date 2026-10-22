@@ -27,7 +27,7 @@
 
 | Campo | Tipo | Valores |
 |---|---|---|
-| **Tipo** | Single select | `Historia` · `Técnica` · `Defecto` · `Investigación` |
+| **Tipo** | Single select | `Historia` · `Técnica` · `Documentación` |
 | **Prioridad** | Single select | `Must` · `Should` · `Could` |
 | **Épica** | Single select | `Autenticación` · `Empresas` · `Vacantes` · `Postulaciones` · `Administración` · `Perfil` |
 | **Puntos** | Number | `1` · `2` · `3` · `5` · `8` |

@@ -1,19 +1,10 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-/.vscode
-/.claude
-/scripts
-/assets
-/app.json
-/LICENSE
-package.json
-/constants/theme.ts
-
-
 # dependencies
 node_modules/
-.pnp
-.pnp.js
+/.vscode
+/assets/
+/scripts
 
 # Expo
 .expo/
@@ -28,12 +19,7 @@ expo-env.d.ts
 *.p8
 *.p12
 *.key
-*.keystore
 *.mobileprovision
-.gradle/
-build/
-*.apk
-*.aab
 
 # Metro
 .metro-health-check*
@@ -42,43 +28,19 @@ build/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
-pnpm-debug.*
 
-# macOS & OS
+# macOS
 .DS_Store
-Thumbs.db
-desktop.ini
 *.pem
 
 # local env files
-.env
 .env*.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# typescript & build caches
+# typescript
 *.tsbuildinfo
-.eslintcache
-
-# IDEs
-.idea/
-*.iml
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
 
 example
 
 # generated native folders
 /ios
 /android
-
-# ==========================================
-# REGLAS DE EXCEPCIÓN: DOCUMENTACIÓN
-# (Nunca ignorar la documentación del proyecto)
-# ==========================================
-!docs/
-!docs/**
-!documentación/
-!documentación/**

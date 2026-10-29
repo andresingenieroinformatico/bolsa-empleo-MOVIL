@@ -21,3 +21,9 @@ Característica: Autenticación de estudiante con Google OAuth
     Cuando selecciono "Iniciar con Google" pero cancelo el permiso
     Entonces permanezco en la pantalla de inicio
     Y veo un mensaje informando que la autenticación fue cancelada
+
+  Escenario: Cuenta de Google fuera del dominio institucional
+    Dado que intento iniciar sesión con una cuenta que no termina en "@unipaz.edu.co"
+    Cuando Google devuelve las credenciales de esa cuenta
+    Entonces el sistema rechaza el acceso
+    Y veo un mensaje indicando que se requiere una cuenta institucional de UNIPAZ

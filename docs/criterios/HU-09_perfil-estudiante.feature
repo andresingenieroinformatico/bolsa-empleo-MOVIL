@@ -18,7 +18,7 @@ Característica: Perfil del estudiante
 
   Escenario: Estudiante sube su hoja de vida al perfil
     Dado que estoy en la sección de mi perfil
-    Cuando subo un archivo PDF o DOCX como hoja de vida
+    Cuando subo un archivo PDF de hasta 5 MB como hoja de vida
     Entonces el archivo se almacena en disco privado del servidor
     Y puedo reutilizarlo al postularme a vacantes futuras
 
@@ -31,5 +31,11 @@ Característica: Perfil del estudiante
   Escenario: Tamaño de archivo excede el límite permitido
     Dado que intento subir un archivo de hoja de vida mayor al límite establecido
     Cuando selecciono el archivo y confirmo la subida
-    Entonces el sistema muestra un mensaje de error indicando el tamaño máximo permitido
+    Entonces el sistema muestra un mensaje indicando el límite de 5 MB
     Y el archivo no se sube
+
+  Escenario: Estudiante intenta subir un archivo que no es PDF
+    Dado que estoy en la sección de mi perfil
+    Cuando selecciono un archivo que no tiene formato PDF
+    Entonces la aplicación indica que solo se aceptan archivos PDF
+    Y no inicia la subida

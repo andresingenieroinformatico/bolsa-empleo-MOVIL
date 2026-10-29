@@ -6,7 +6,7 @@ Característica: Registro y aprobación de empresa
 
   Escenario: Empresa se registra exitosamente
     Dado que soy representante de una empresa
-    Cuando completo el formulario de registro con email único, contraseña y NIT opcional
+    Cuando completo el formulario de registro con email único, contraseña y NIT válido
     Entonces mi cuenta se crea en estado "pending"
     Y no puedo publicar vacantes hasta ser aprobado
     Y recibo un mensaje indicando que mi solicitud está en revisión
@@ -16,18 +16,26 @@ Característica: Registro y aprobación de empresa
     Cuando envío el formulario de registro
     Entonces el sistema muestra un error indicando que el email ya está en uso
 
+  Escenario: Registro con NIT inválido
+    Dado que estoy completando el formulario de registro empresarial
+    Cuando ingreso un NIT vacío o con formato inválido
+    Entonces el sistema indica que el NIT es obligatorio y debe ser válido
+    Y no crea la cuenta empresarial
+
   Escenario: Admin aprueba una empresa
     Dado que soy administrador y hay una empresa en estado "pending"
     Cuando apruebo la empresa desde el panel de administración
     Entonces la empresa pasa a estado "approved"
     Y el representante recibe una notificación por email y en la plataforma
     Y la empresa puede ahora publicar vacantes
+    Y la acción queda registrada en el historial administrativo
 
   Escenario: Admin rechaza una empresa
     Dado que soy administrador y hay una empresa en estado "pending"
     Cuando rechazo la empresa con un motivo
     Entonces la empresa recibe notificación de rechazo por email
     Y no puede publicar vacantes
+    Y la acción queda registrada en el historial administrativo
 
   Escenario: Empresa inactiva intenta iniciar sesión
     Dado que mi cuenta de empresa está marcada como inactiva

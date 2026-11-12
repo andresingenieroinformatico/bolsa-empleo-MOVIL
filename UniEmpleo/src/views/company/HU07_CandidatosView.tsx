@@ -461,7 +461,6 @@ const styles = StyleSheet.create({
   candidateSkeletonMeta: { width: '32%', height: 10 },
   candidateSkeletonLine: { width: '84%', height: 10 },
   candidateSkeletonLineShort: { width: '56%', height: 10 },
-  },
   loadError: {
     marginHorizontal: 16,
     marginTop: 12,

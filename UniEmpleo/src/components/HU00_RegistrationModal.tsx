@@ -16,7 +16,8 @@ interface RegistrationModalProps {
   visible: boolean;
   onClose: () => void;
   onRegisterCompany: (input: CompanyRegistrationInput) => Promise<void>;
-  onRegisterStudent: () => void;
+  onStudentGoogleLogin: () => Promise<void>;
+  googleLoginLoading: boolean;
   onLoginCompany: () => void;
   onGoHome: () => void;
 }
@@ -25,7 +26,8 @@ export function HU00_RegistrationModal({
   visible,
   onClose,
   onRegisterCompany,
-  onRegisterStudent,
+  onStudentGoogleLogin,
+  googleLoginLoading,
   onLoginCompany,
   onGoHome,
 }: RegistrationModalProps) {
@@ -44,6 +46,7 @@ export function HU00_RegistrationModal({
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [googleErrorMessage, setGoogleErrorMessage] = useState<string | null>(null);
   const [registered, setRegistered] = useState(false);
 
   const handleRegisterCompany = async () => {
@@ -98,10 +101,15 @@ export function HU00_RegistrationModal({
     }
   };
 
-  const handleStudentRegistration = () => {
-    setErrorMessage(null);
-    onClose();
-    onRegisterStudent();
+  const handleStudentGoogleLogin = async () => {
+    setGoogleErrorMessage(null);
+    try {
+      await onStudentGoogleLogin();
+    } catch (error) {
+      setGoogleErrorMessage(
+        error instanceof Error ? error.message : 'No fue posible iniciar sesión con Google.',
+      );
+    }
   };
 
   return (
@@ -119,7 +127,7 @@ export function HU00_RegistrationModal({
             <View style={styles.headingCopy}>
               <Text style={styles.eyebrow}>ÚNETE A UNIEMPLEO</Text>
               <Text style={styles.title}>Registrarse</Text>
-              <Text style={styles.subtitle}>Estudiantes ingresan con Google; empresas registran sus datos institucionales.</Text>
+              <Text style={styles.subtitle}>Estudiantes inician sesión con Google; empresas registran sus datos institucionales.</Text>
             </View>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeText}>×</Text>
@@ -130,14 +138,24 @@ export function HU00_RegistrationModal({
             <View style={styles.studentPanel}>
               <View style={styles.studentCopy}>
                 <Text style={styles.panelTitle}>🎓 Soy estudiante UNIPAZ</Text>
-                <Text style={styles.panelBody}>Regístrate o inicia sesión de forma segura con tu cuenta institucional.</Text>
+                <Text style={styles.panelBody}>Accede directamente con tu cuenta institucional de Google.</Text>
               </View>
               <TouchableOpacity
                 accessibilityRole="button"
-                onPress={handleStudentRegistration}
-                style={styles.studentButton}>
-                <Text style={styles.studentButtonText}>Registrarse con Google</Text>
+                disabled={googleLoginLoading}
+                onPress={() => void handleStudentGoogleLogin()}
+                style={[styles.studentButton, googleLoginLoading && styles.disabledButton]}>
+                {googleLoginLoading ? (
+                  <ActivityIndicator size="small" color="#007832" />
+                ) : (
+                  <Text style={styles.studentButtonText}>Iniciar sesión con Google</Text>
+                )}
               </TouchableOpacity>
+              {googleErrorMessage && (
+                <Text accessibilityRole="alert" style={styles.errorText}>
+                  {googleErrorMessage}
+                </Text>
+              )}
             </View>
 
             <View style={styles.formHeading}>

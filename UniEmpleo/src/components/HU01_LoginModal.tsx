@@ -11,17 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import {
-  authenticateWithGoogle,
-  authenticateWithPassword,
-  getAuthenticatedSession,
-} from '@/services/api';
+import { authenticateWithPassword, getAuthenticatedSession } from '@/services/api';
 import { AuthSession as StoredSession, saveAuthSession } from '@/services/auth-session';
 import { UserRole } from '@/data/mock-data';
-
-WebBrowser.maybeCompleteAuthSession();
 
 interface LoginModalProps {
   visible: boolean;
@@ -29,6 +21,10 @@ interface LoginModalProps {
   onClose: () => void;
   onLoginSuccess: (session: StoredSession) => Promise<void>;
   onRoleChange: (role: 'student' | 'company') => void;
+  onGoogleLogin: () => Promise<void>;
+  googleLoginLoading: boolean;
+  googleLoginReady: boolean;
+  googleClientConfigured: boolean;
   onCreateAccount: () => void;
   onGoHome: () => void;
 }
@@ -39,6 +35,10 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   onLoginSuccess,
   onRoleChange,
+  onGoogleLogin,
+  googleLoginLoading,
+  googleLoginReady,
+  googleClientConfigured,
   onCreateAccount,
   onGoHome,
 }) => {
@@ -48,29 +48,8 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
   const [password, setPassword] = useState('');
   const isStudent = role === 'student';
 
-  const clientId =
-    Platform.OS === 'android'
-      ? process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
-      : Platform.OS === 'ios'
-        ? process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
-        : process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-  const discovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
-  const [request, , promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: clientId || 'google-client-id-not-configured',
-      responseType: AuthSession.ResponseType.Code,
-      scopes: ['openid', 'email', 'profile'],
-      redirectUri: AuthSession.makeRedirectUri({ scheme: 'uniempleo' }),
-      usePKCE: true,
-    },
-    discovery,
-  );
-
-  const finishLogin = async (
-    response: Awaited<ReturnType<typeof authenticateWithPassword>>,
-    method: 'password' | 'google',
-  ) => {
-    const session = getAuthenticatedSession(response, method);
+  const finishLogin = async (response: Awaited<ReturnType<typeof authenticateWithPassword>>) => {
+    const session = getAuthenticatedSession(response, 'password');
     await saveAuthSession(session);
     await onLoginSuccess(session);
     onClose();
@@ -78,56 +57,10 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
 
   const handleGoogleLogin = async () => {
     setErrorMessage(null);
-    const configuredClientId = clientId;
-    if (!configuredClientId) {
-      setErrorMessage(`Falta configurar el Client ID de Google para ${Platform.OS}.`);
-      return;
-    }
-    if (!request) {
-      setErrorMessage('La solicitud de Google aún se está preparando.');
-      return;
-    }
-
-    setLoading(true);
     try {
-      const result = await promptAsync();
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        setErrorMessage('Se canceló el inicio de sesión con Google.');
-        return;
-      }
-      if (result.type !== 'success') {
-        setErrorMessage(
-          result.type === 'error'
-            ? result.error?.description || result.params.error_description || 'Google no pudo autenticar la cuenta.'
-            : 'No fue posible completar el inicio de sesión con Google.',
-        );
-        return;
-      }
-
-      const code = result.params.code;
-      const verifier = request.codeVerifier;
-      const discoveryDocument = discovery;
-      if (!code || !verifier || !discoveryDocument) {
-        throw new Error('Google no devolvió el código necesario para completar el acceso.');
-      }
-
-      const googleTokens = await AuthSession.exchangeCodeAsync(
-        {
-          clientId: configuredClientId,
-          code,
-          redirectUri: request.redirectUri,
-          extraParams: { code_verifier: verifier },
-        },
-        discoveryDocument,
-      );
-      if (!googleTokens.idToken) {
-        throw new Error('Google no devolvió un ID token.');
-      }
-      await finishLogin(await authenticateWithGoogle(googleTokens.idToken), 'google');
+      await onGoogleLogin();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'No fue posible abrir Google.');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -140,10 +73,7 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
 
     setLoading(true);
     try {
-      await finishLogin(
-        await authenticateWithPassword(email.trim().toLowerCase(), password),
-        'password',
-      );
+      await finishLogin(await authenticateWithPassword(email.trim().toLowerCase(), password));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'No fue posible iniciar sesión.');
     } finally {
@@ -208,7 +138,7 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
                 : 'Ingresa las credenciales de tu empresa para publicar ofertas.'}
             </Text>
 
-            {loading ? (
+            {loading || googleLoginLoading ? (
               <View style={styles.loadingBox}>
                 <ActivityIndicator size="large" color="#1552A0" />
                 <Text style={styles.loadingText}>Validando la sesión con UniEmpleo…</Text>
@@ -228,13 +158,13 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
                 </View>
                 <TouchableOpacity
                   accessibilityRole="button"
-                  style={[styles.googleButton, (!clientId || !request) && styles.buttonDisabled]}
-                  disabled={!clientId || !request}
+                  style={[styles.googleButton, (!googleLoginReady || googleLoginLoading) && styles.buttonDisabled]}
+                  disabled={!googleLoginReady || googleLoginLoading}
                   onPress={() => void handleGoogleLogin()}>
                   <Text style={styles.googleIcon}>G</Text>
-                  <Text style={styles.googleButtonText}>Continuar con Google</Text>
+                  <Text style={styles.googleButtonText}>Iniciar sesión con Google</Text>
                 </TouchableOpacity>
-                {!clientId && (
+                {!googleClientConfigured && (
                   <Text style={styles.configurationText}>
                     Falta configurar el acceso de Google para {Platform.OS}.
                   </Text>

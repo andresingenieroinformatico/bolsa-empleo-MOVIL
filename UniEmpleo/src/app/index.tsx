@@ -63,6 +63,7 @@ import { HU00_LandingPage } from '@/components/HU00_LandingPage';
 import { HU00_RegistrationModal } from '@/components/HU00_RegistrationModal';
 import { resolveRoleEntry } from '@/services/role-navigation';
 import { SkeletonBlock } from '@/components/SkeletonBlock';
+import { useStudentGoogleLogin } from '@/hooks/use-student-google-login';
 
 // Vistas de Estudiante
 import { HU04_VacantesView } from '@/views/student/HU04_VacantesView';
@@ -265,6 +266,16 @@ export default function HomeScreen() {
       setIsRoleDataLoading(false);
     }
   };
+
+  const handleGoogleLoginSuccess = async (nextSession: AuthSession) => {
+    await handleLoginSuccess(nextSession);
+    setShowLoginModal(false);
+    setShowRegistrationModal(false);
+  };
+
+  const googleLogin = useStudentGoogleLogin({
+    onAuthenticated: handleGoogleLoginSuccess,
+  });
 
   const handleApplyToJob = async (
     job: JobOffer,
@@ -694,6 +705,10 @@ export default function HomeScreen() {
         onClose={() => setShowLoginModal(false)}
         onLoginSuccess={handleLoginSuccess}
         onRoleChange={setCurrentRole}
+        onGoogleLogin={googleLogin.startLogin}
+        googleLoginLoading={googleLogin.isLoading}
+        googleLoginReady={googleLogin.isReady}
+        googleClientConfigured={googleLogin.isConfigured}
         onCreateAccount={() => {
           setShowLoginModal(false);
           setShowRegistrationModal(true);
@@ -708,7 +723,8 @@ export default function HomeScreen() {
           visible={showRegistrationModal}
           onClose={() => setShowRegistrationModal(false)}
           onRegisterCompany={handleRegisterCompany}
-          onRegisterStudent={() => handleOpenLogin('student')}
+          onStudentGoogleLogin={googleLogin.startLogin}
+          googleLoginLoading={googleLogin.isLoading}
           onLoginCompany={handleCompanyLogin}
           onGoHome={() => {
             setShowRegistrationModal(false);

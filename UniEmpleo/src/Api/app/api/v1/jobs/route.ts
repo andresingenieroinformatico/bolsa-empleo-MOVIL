@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const modalidad = url.searchParams.get("modalidad");
   const ciudad = url.searchParams.get("ciudad") || url.searchParams.get("ubicacion");
 
-  const queryParams: Record<string, any> = {};
+  const queryParams: Record<string, string> = {};
   if (search) queryParams.search = search;
   if (ciudad) queryParams.location = ciudad;
   if (modalidad) {

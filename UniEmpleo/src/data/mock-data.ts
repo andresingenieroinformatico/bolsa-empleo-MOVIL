@@ -48,10 +48,14 @@ export interface JobOffer {
   title: string;
   description: string;
   requirements: string[];
+  responsibilities?: string;
   area: string;
   program: string;
   modality: JobModality;
   contractType: ContractType;
+  schedule?: string;
+  salaryRange?: string;
+  salaryNegotiable?: boolean;
   deadline: string;
   location: string;
   status: 'active' | 'paused' | 'closed';

@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { CompanyRegistrationInput } from '@/services/api';
 
@@ -17,6 +18,7 @@ interface RegistrationModalProps {
   onRegisterCompany: (input: CompanyRegistrationInput) => Promise<void>;
   onRegisterStudent: () => void;
   onLoginCompany: () => void;
+  onGoHome: () => void;
 }
 
 export function HU00_RegistrationModal({
@@ -25,7 +27,10 @@ export function HU00_RegistrationModal({
   onRegisterCompany,
   onRegisterStudent,
   onLoginCompany,
+  onGoHome,
 }: RegistrationModalProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 600;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +38,9 @@ export function HU00_RegistrationModal({
   const [companyName, setCompanyName] = useState('');
   const [nit, setNit] = useState('');
   const [sector, setSector] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -41,12 +48,30 @@ export function HU00_RegistrationModal({
 
   const handleRegisterCompany = async () => {
     setErrorMessage(null);
-    if (!name.trim() || !email.trim() || !companyName.trim() || !nit.trim() || !password) {
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !companyName.trim() ||
+      !sector.trim() ||
+      !contactPerson.trim() ||
+      !phone.trim() ||
+      !address.trim() ||
+      !description.trim() ||
+      !password
+    ) {
       setErrorMessage('Completa los campos obligatorios para continuar.');
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
     if (password !== passwordConfirmation) {
       setErrorMessage('Las contraseñas no coinciden.');
+      return;
+    }
+    if (description.trim().length < 10) {
+      setErrorMessage('La descripción debe tener al menos 10 caracteres.');
       return;
     }
 
@@ -58,10 +83,12 @@ export function HU00_RegistrationModal({
         password,
         password_confirmation: passwordConfirmation,
         company_name: companyName.trim(),
-        nit: nit.trim(),
-        sector: sector.trim() || undefined,
-        phone: phone.trim() || undefined,
-        description: description.trim() || undefined,
+        nit: nit.trim() || undefined,
+        sector: sector.trim(),
+        contact_person: contactPerson.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        description: description.trim(),
       });
       setRegistered(true);
     } catch (error) {
@@ -81,10 +108,17 @@ export function HU00_RegistrationModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Ir a la página principal de UniEmpleo"
+            onPress={onGoHome}
+            style={styles.homeLink}>
+            <Text style={styles.homeLinkText}>UniEmpleo · Inicio</Text>
+          </TouchableOpacity>
           <View style={styles.headingRow}>
             <View style={styles.headingCopy}>
               <Text style={styles.eyebrow}>ÚNETE A UNIEMPLEO</Text>
-              <Text style={styles.title}>Crea tu cuenta</Text>
+              <Text style={styles.title}>Registrarse</Text>
               <Text style={styles.subtitle}>Estudiantes ingresan con Google; empresas registran sus datos institucionales.</Text>
             </View>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar" onPress={onClose} style={styles.closeButton}>
@@ -95,19 +129,19 @@ export function HU00_RegistrationModal({
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
             <View style={styles.studentPanel}>
               <View style={styles.studentCopy}>
-                <Text style={styles.panelTitle}>Soy estudiante UNIPAZ</Text>
+                <Text style={styles.panelTitle}>🎓 Soy estudiante UNIPAZ</Text>
                 <Text style={styles.panelBody}>Regístrate o inicia sesión de forma segura con tu cuenta institucional.</Text>
               </View>
               <TouchableOpacity
                 accessibilityRole="button"
                 onPress={handleStudentRegistration}
                 style={styles.studentButton}>
-                <Text style={styles.studentButtonText}>Continuar con Google</Text>
+                <Text style={styles.studentButtonText}>Registrarse con Google</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.formHeading}>
-              <Text style={styles.sectionTitle}>Registrar empresa</Text>
+              <Text style={styles.sectionTitle}>🏢 Registrar empresa</Text>
               <Text style={styles.sectionBody}>Las solicitudes quedan pendientes de validación institucional.</Text>
             </View>
 
@@ -124,16 +158,18 @@ export function HU00_RegistrationModal({
               </View>
             ) : (
               <>
-                <View style={styles.fieldsGrid}>
-                  <Field label="Razón social *" value={companyName} onChangeText={setCompanyName} placeholder="Nombre legal de la empresa" />
-                  <Field label="NIT *" value={nit} onChangeText={setNit} placeholder="900.123.456-7" />
-                  <Field label="Nombre de contacto *" value={name} onChangeText={setName} placeholder="Persona responsable" />
-                  <Field label="Correo corporativo *" value={email} onChangeText={setEmail} placeholder="nombre@empresa.com" keyboardType="email-address" autoCapitalize="none" />
-                  <Field label="Sector" value={sector} onChangeText={setSector} placeholder="Tecnología, energía, servicios..." />
-                  <Field label="Teléfono" value={phone} onChangeText={setPhone} placeholder="+57 300 000 0000" keyboardType="phone-pad" />
+                <View style={[styles.fieldsGrid, wide && styles.fieldsGridWide]}>
+                  <Field label="Razón social *" value={companyName} onChangeText={setCompanyName} placeholder="Nombre legal de la empresa" maxLength={255} />
+                  <Field label="NIT (opcional)" value={nit} onChangeText={setNit} placeholder="900.123.456-7" maxLength={20} />
+                  <Field label="Nombre del responsable *" value={name} onChangeText={setName} placeholder="Persona responsable" maxLength={255} />
+                  <Field label="Persona de contacto *" value={contactPerson} onChangeText={setContactPerson} placeholder="Contacto de recursos humanos" maxLength={255} />
+                  <Field label="Correo corporativo *" value={email} onChangeText={setEmail} placeholder="nombre@empresa.com" keyboardType="email-address" autoCapitalize="none" maxLength={255} />
+                  <Field label="Sector *" value={sector} onChangeText={setSector} placeholder="Tecnología, energía, servicios..." maxLength={100} />
+                  <Field label="Teléfono *" value={phone} onChangeText={setPhone} placeholder="+57 300 000 0000" keyboardType="phone-pad" maxLength={20} />
+                  <Field label="Dirección *" value={address} onChangeText={setAddress} placeholder="Dirección de la empresa" maxLength={255} />
                   <Field label="Contraseña *" value={password} onChangeText={setPassword} placeholder="Crea una contraseña" secureTextEntry />
                   <Field label="Confirmar contraseña *" value={passwordConfirmation} onChangeText={setPasswordConfirmation} placeholder="Repite la contraseña" secureTextEntry />
-                  <Field label="Descripción" value={description} onChangeText={setDescription} placeholder="Describe brevemente la actividad de la empresa" multiline />
+                  <Field label="Descripción *" value={description} onChangeText={setDescription} placeholder="Describe brevemente la actividad de la empresa" multiline maxLength={1000} />
                 </View>
                 {errorMessage && <Text accessibilityRole="alert" style={styles.errorText}>{errorMessage}</Text>}
                 <TouchableOpacity
@@ -164,17 +200,21 @@ interface FieldProps {
   autoCapitalize?: 'none';
   secureTextEntry?: boolean;
   multiline?: boolean;
+  maxLength?: number;
 }
 
 function Field({ label, multiline, ...inputProps }: FieldProps) {
+  const wide = useWindowDimensions().width >= 600;
+
   return (
-    <View style={[styles.field, multiline && styles.fullField]}>
+    <View     style={[styles.field, wide && styles.fieldWide, multiline && styles.fullField]}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         {...inputProps}
         accessibilityLabel={label}
         autoCapitalize={inputProps.autoCapitalize}
         multiline={multiline}
+        maxLength={inputProps.maxLength}
         style={[styles.input, multiline && styles.multilineInput]}
       />
     </View>
@@ -184,36 +224,40 @@ function Field({ label, multiline, ...inputProps }: FieldProps) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(17, 34, 31, 0.58)', justifyContent: 'center', padding: 14 },
   sheet: { width: '100%', maxWidth: 620, maxHeight: '94%', alignSelf: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, overflow: 'hidden' },
-  headingRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#E8EEEB' },
+  homeLink: { alignSelf: 'flex-start', paddingHorizontal: 20, paddingTop: 14 },
+  homeLinkText: { color: '#31554F', fontSize: 12, fontWeight: '800' },
+  headingRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#E8EEEB' },
   headingCopy: { flex: 1, gap: 4, paddingRight: 12 },
-  eyebrow: { color: '#0F766E', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
-  title: { color: '#183D37', fontSize: 22, fontWeight: '800' },
-  subtitle: { color: '#687A75', fontSize: 11, lineHeight: 16 },
+  eyebrow: { color: '#00963F', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  title: { color: '#1A1F36', fontSize: 22, fontWeight: '800' },
+  subtitle: { color: '#6B7280', fontSize: 11, lineHeight: 16 },
   closeButton: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F3', alignItems: 'center', justifyContent: 'center' },
-  closeText: { color: '#52665F', fontSize: 22, lineHeight: 25 },
+  closeText: { color: '#6B7280', fontSize: 22, lineHeight: 25 },
   content: { padding: 18, gap: 18 },
-  studentPanel: { padding: 14, backgroundColor: '#EDF5F2', borderRadius: 8, gap: 12 },
+  studentPanel: { padding: 14, backgroundColor: '#E6F7ED', borderRadius: 8, gap: 12 },
   studentCopy: { gap: 4 },
-  panelTitle: { color: '#214640', fontSize: 13, fontWeight: '800' },
-  panelBody: { color: '#627872', fontSize: 11, lineHeight: 16 },
+  panelTitle: { color: '#1A1F36', fontSize: 13, fontWeight: '800' },
+  panelBody: { color: '#6B7280', fontSize: 11, lineHeight: 16 },
   studentButton: { alignSelf: 'flex-start', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBDAD5', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9 },
-  studentButtonText: { color: '#0F625B', fontSize: 11, fontWeight: '800' },
+  studentButtonText: { color: '#007832', fontSize: 11, fontWeight: '800' },
   formHeading: { gap: 3 },
-  sectionTitle: { color: '#183D37', fontSize: 15, fontWeight: '800' },
-  sectionBody: { color: '#71817C', fontSize: 10, lineHeight: 15 },
-  fieldsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  field: { width: '48%', flexGrow: 1, gap: 5 },
+  sectionTitle: { color: '#1A1F36', fontSize: 15, fontWeight: '800' },
+  sectionBody: { color: '#6B7280', fontSize: 10, lineHeight: 15 },
+  fieldsGrid: { gap: 10 },
+  fieldsGridWide: { flexDirection: 'row', flexWrap: 'wrap' },
+  field: { width: '100%', gap: 5 },
+  fieldWide: { width: '48%', flexGrow: 1 },
   fullField: { width: '100%' },
   fieldLabel: { color: '#3F5751', fontSize: 10, fontWeight: '700' },
-  input: { minHeight: 40, borderWidth: 1, borderColor: '#D9E2DE', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, color: '#263D38', fontSize: 12 },
+  input: { minHeight: 40, borderWidth: 1, borderColor: '#D9E2DE', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8, color: '#1A1F36', fontSize: 12 },
   multilineInput: { minHeight: 72, textAlignVertical: 'top' },
-  submitButton: { minHeight: 42, borderRadius: 6, backgroundColor: '#0F766E', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 10 },
+  submitButton: { minHeight: 42, borderRadius: 6, backgroundColor: '#00963F', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 10 },
   submitText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
   disabledButton: { opacity: 0.6 },
   errorText: { color: '#A93636', fontSize: 11, lineHeight: 16 },
   loginLink: { alignSelf: 'center', paddingVertical: 5 },
-  loginLinkText: { color: '#0F766E', fontSize: 10, fontWeight: '700' },
-  successPanel: { padding: 14, backgroundColor: '#EDF7F1', borderRadius: 8, gap: 9 },
+  loginLinkText: { color: '#00963F', fontSize: 10, fontWeight: '700' },
+  successPanel: { padding: 14, backgroundColor: '#E6F7ED', borderRadius: 8, gap: 9 },
   successTitle: { color: '#1C5C3B', fontSize: 14, fontWeight: '800' },
   successBody: { color: '#527164', fontSize: 11, lineHeight: 16 },
 });

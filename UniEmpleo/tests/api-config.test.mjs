@@ -58,3 +58,27 @@ test('sends bearer tokens and surfaces API error messages', async () => {
     }
   }
 });
+
+test('explains when the configured gateway does not expose the requested API route', async () => {
+  const originalUrl = process.env.EXPO_PUBLIC_API_URL;
+  const originalFetch = globalThis.fetch;
+  process.env.EXPO_PUBLIC_API_URL = 'https://api.example.test';
+  globalThis.fetch = async () => new Response('Not Found', { status: 404 });
+
+  try {
+    await assert.rejects(
+      apiRequest('jobs'),
+      (error) =>
+        error instanceof ApiError &&
+        error.status === 404 &&
+        error.message.includes('gateway publique las rutas'),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) {
+      delete process.env.EXPO_PUBLIC_API_URL;
+    } else {
+      process.env.EXPO_PUBLIC_API_URL = originalUrl;
+    }
+  }
+});

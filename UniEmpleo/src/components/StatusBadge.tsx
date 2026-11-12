@@ -36,8 +36,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, size = 
       case 'approved':
       case 'active':
         return {
-          bg: '#D1FAE5',
-          color: '#065F46',
+          bg: '#E6F7ED',
+          color: '#007832',
           text: label || (status === 'active' ? 'Activa' : status === 'approved' ? 'Aprobada' : 'Aceptado'),
           icon: '✅',
         };
@@ -52,15 +52,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, size = 
       case 'closed':
       case 'inactive':
         return {
-          bg: '#F3F4F6',
-          color: '#4B5563',
+          bg: '#F4F5F7',
+          color: '#6B7280',
           text: label || (status === 'paused' ? 'Pausada' : status === 'closed' ? 'Cerrada' : 'Inactiva'),
           icon: '⏸️',
         };
       default:
         return {
           bg: '#E5E7EB',
-          color: '#374151',
+          color: '#6B7280',
           text: label || String(status),
           icon: '•',
         };

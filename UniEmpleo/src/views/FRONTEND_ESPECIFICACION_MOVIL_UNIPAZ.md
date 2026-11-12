@@ -1,18 +1,12 @@
 # Especificación del frontend móvil y responsivo — Emplea UNIPAZ
 
-> **Propósito:** servir como referencia de producto, diseño y comportamiento para la IA o el equipo que implemente el frontend. Describe la aplicación que existe, el flujo visual deseado y los límites del backend actual. No es autorización para cambiar rutas, reglas de negocio o esquema de base de datos.
+> **Propósito:** referencia vigente de producto, diseño y comportamiento para la app móvil UniEmpleo. Las decisiones confirmadas en esta revisión sustituyen las referencias heredadas a Laravel Blade, Bootstrap y una web responsiva.
 >
-> **Estado:** especificación inicial basada en el repositorio y el bundle Figma disponibles.
+> **Estado:** Expo/React Native, Android-first. El contrato de datos es `src/Api/docs/API_DOCUMENTATION.md`; no asumir que las rutas web de Laravel están disponibles en la app.
 
 ## 1. Objetivo y alcance
 
-Adaptar la Bolsa de Empleo UNIPAZ a una experiencia **mobile-first, responsiva y usable en celular**, sin perder las funciones actuales para escritorio. Debe conectar a estudiantes, empresas y administración, con pantallas y navegación diferentes por rol.
-
-La prioridad visual para el acceso es el prototipo del folder `Inicio de sesión Bolsa de empleo`. El resto de las pantallas se deriva de las vistas, controladores, modelos y rutas Laravel existentes; el bundle Figma no contiene diseños de dashboards, vacantes ni registros completos.
-
-### Supuesto de plataforma
-
-El proyecto inspeccionado es una aplicación web Laravel con Blade y Bootstrap. Por tanto, esta especificación plantea una **aplicación web responsiva para celular**, no una app nativa Android/iOS ni una SPA nueva. No sustituir Laravel/Blade por React ni añadir modo PWA sin confirmación y un cambio de alcance explícito.
+Construir una aplicación móvil Android con Expo y React Native para conectar estudiantes, empresas y administración con las oportunidades laborales de UNIPAZ. La versión web de Expo es solo una vista de desarrollo; no debe dirigir las decisiones de interacción móvil.
 
 ### Perfiles
 
@@ -22,218 +16,125 @@ El proyecto inspeccionado es una aplicación web Laravel con Blade y Bootstrap. 
 | Empresa | Correo y contraseña; registro sujeto a aprobación | Publicar oportunidades y administrar postulantes. |
 | Administrador | Correo y contraseña; no hay registro público | Validar empresas, moderar vacantes, administrar usuarios y consultar reportes. |
 
-### Fuera del alcance sin aprobación
+### Límites
 
-- Implementar una app nativa, una API nueva o cambiar el mecanismo de autenticación.
-- Crear registro con contraseña para estudiantes, registro de administradores o recuperación de contraseña: el backend actual no ofrece esos flujos.
-- Permitir consultar la lista completa de vacantes sin iniciar sesión: las rutas de vacantes están protegidas por `auth`.
-- Inventar datos, filtros o acciones que no existan en las rutas actuales.
-- Hacer cambios de esquema, rutas o reglas del backend para que una pantalla parezca funcional.
+- No crear registro manual de estudiantes, registro público de administradores ni recuperación de contraseña; no están definidos en el contrato de la API.
+- No sustituir respuestas reales por datos de demostración ni confiar en el selector visual de rol para autorizar acciones.
+- No añadir acciones o filtros sin endpoint documentado.
+- La pantalla pública puede mostrar vacantes solo si el gateway devuelve la lista pública documentada.
 
 ## 2. Fuentes revisadas y decisiones de precedencia
 
 Fuentes principales:
 
-- `routes/web.php`: rutas reales, nombres y middleware.
-- `app/Http/Controllers/`: validaciones, permisos, redirecciones y datos por pantalla.
-- `app/Models/` y `database/migrations/`: entidades y estados persistidos.
-- `resources/views/` y `resources/css/`: interfaz web actual, campos y estilos.
-- `Inicio de sesión Bolsa de empleo/src/app/App.tsx` y `src/styles/`: referencia visual de acceso Figma.
-- `unipaz_emplea_redesign.html`, `mejoras_qa_dev.md` y documentación técnica/funcional del proyecto.
+- `src/app/index.tsx` y `src/views/`: pantallas y navegación móvil por rol.
+- `src/services/api.ts`: cliente HTTP, URL base, tipos y operaciones consumidas por la app.
+- `src/Api/docs/API_DOCUMENTATION.md` y `src/Api/app/api/v1/`: contrato y rutas implementadas por el gateway.
+- `src/services/auth-session.ts`: persistencia local de sesión.
 
-**Precedencia si las fuentes discrepan:** rutas, validaciones de controladores y esquema de migraciones son el contrato funcional. Las vistas, el prototipo Figma y documentos antiguos son referencias de presentación, no autorizan funcionalidades inexistentes.
+**Precedencia si las fuentes discrepan:** usar primero el contrato REST documentado y las rutas presentes en el gateway; después, las decisiones explícitas de plataforma y marca de esta especificación. Los documentos de Laravel/Blade y las rutas web antiguas no son contratos de la app móvil.
 
-Hallazgos que la implementación debe tener presentes:
-
-1. `Inicio de sesión Bolsa de empleo` es un proyecto Figma Make separado (React/Vite) y actualmente es un prototipo de acceso; no está conectado a Laravel. El formulario simula una espera con `setTimeout`, y sus botones de registro y contraseña olvidada no tienen flujo real.
-2. `README.md` contiene marcadores de conflicto Git; no usarlo como única fuente de requisitos.
-3. Existe una copia anidada `Bolsa-empleo-unipaz-main/`; los archivos clave comparados (`routes/web.php`, `package.json`, landing y controlador de vacantes) coinciden con la raíz. **Tomar como raíz de trabajo la carpeta que contiene este documento y el folder Figma**, no editar ambas copias.
-4. El buscador de la landing no coincide con la búsqueda implementada: envía `q`, ubicación y salario a `/auth/google`; el listado estudiantil espera `search`, `area`, `modality` y `contract_type`. No hay filtro de sueldo ni ubicación en el controlador actual.
-5. El formulario de registro presenta dirección y descripción sin marca de obligatorio, pero el controlador las exige. La interfaz debe mostrar la obligatoriedad real y errores del servidor.
-6. La interfaz indica máximo de 5 MB para el CV y el formulario de vacante limita posiciones a 50; los controladores permiten hasta 20 MB para PDF y hasta 100 posiciones. Para no inducir errores, mostrar los límites del backend actual.
-7. El registro de empresa promete revisión en menos de 24 horas, pero ese SLA no está implementado como garantía. No prometer un plazo fijo sin confirmación institucional.
-8. La vista `resources/views/privacy.blade.php` existe, pero no se encontró una ruta para mostrarla en `routes/web.php`. Confirmar antes de enlazarla en navegación.
+Bloqueo de despliegue conocido: la URL pública configurada debe devolver JSON en `/api/v1` y exponer `/api/v1/jobs`. Un `200` en la raíz del host no demuestra que el gateway esté desplegado.
 
 ## 3. Stack y arquitectura que debe preservarse
 
 | Área | Estado actual | Directriz |
 |---|---|---|
-| Servidor y plantillas | Laravel 12, PHP 8.2, Blade | Usar las vistas y rutas nombradas existentes. |
-| Estilos/componentes | Bootstrap 5, CSS institucional y Bootstrap Icons | Reutilizar el sistema actual; crear componentes Blade/CSS compartidos para evitar estilos duplicados. |
-| Assets | Vite; `resources/css`, `resources/js` | Integrar los cambios al pipeline de Laravel. |
-| Autenticación | Sesión Laravel; Socialite/Google para estudiantes | Mantener formularios POST, CSRF, respuestas y redirecciones del servidor. |
-| Datos | Eloquent; perfiles, empresas, vacantes, postulaciones | Renderizar datos reales enviados por controladores; no sustituirlos por datos de muestra. |
-| Prototipo Figma | React/Vite independiente | Consultarlo como guía visual; no copiarlo como aplicación productiva ni conectarlo con datos simulados. |
+| App | Expo SDK 58, React Native 0.88, Expo Router | Mantener componentes nativos y navegación optimizada para Android. |
+| UI | React Native `StyleSheet` y componentes en `src/components/` y `src/views/` | Evitar incorporar patrones web como Bootstrap, Blade o tablas horizontales. |
+| Configuración API | `EXPO_PUBLIC_API_URL` en `.env.local` | El cliente agrega `/api/v1`; reiniciar Metro después de cambiar variables Expo. |
+| Gateway | Next.js App Router en `src/Api/` | Publica `/api/v1/*` y reenvía las peticiones a Laravel por `LARAVEL_API_URL`. |
+| Autenticación | Google para estudiantes; correo/contraseña para empresas y administradores | Persistir el token con SecureStore y exigir autorización del servidor. |
+| Datos | API REST del gateway | Mostrar datos reales; sin fallback a mocks ni acciones de éxito simuladas. |
 
 ### Estructura existente relevante
 
 ```text
-resources/views/       Vistas Blade por rol y componentes
-resources/css/         app.css y unipaz-premium.css
-resources/js/          app.js y bootstrap.js
-routes/web.php         Rutas web y middleware
-app/Http/Controllers/  Flujos, validaciones y datos de las pantallas
-app/Models/            Entidades y relaciones
-database/migrations/   Esquema y estados válidos
-tests/                 Pruebas existentes
-Inicio de sesión Bolsa de empleo/
-                       Referencia visual Figma (proyecto independiente)
+src/app/               Entrada y contenedor de navegación Expo
+src/components/        Landing, acceso, registro y elementos compartidos
+src/views/             Pantallas de estudiante, empresa y administración
+src/services/api.ts    Cliente de la API REST
+src/Api/app/api/v1/    Rutas del gateway Next.js
+src/Api/lib/           Puente a Laravel
+tests/                 Pruebas del cliente de API
 ```
 
 ### Forma de integrar una acción
 
-Una acción de negocio debe seguir utilizando su ruta y método HTTP Laravel; no reemplazarla por un botón decorativo ni por una respuesta simulada.
-
-```blade
-<form method="POST" action="{{ route('login') }}">
-    @csrf
-    <label for="email">Correo electrónico</label>
-    <input id="email" name="email" type="email" autocomplete="email" required>
-    <button type="submit">Ingresar</button>
-</form>
-```
-
-Conservar `@csrf`, nombres de rutas, métodos HTTP y nombres de campos existentes. Si el backend retorna errores, mostrarlos junto al campo y conservar los valores no sensibles; nunca volver a mostrar una contraseña enviada.
+Toda acción de negocio pasa por `src/services/api.ts` y una ruta documentada del gateway. Enviar el token Bearer cuando corresponda, validar entradas conforme a la API, mostrar errores del servidor y no presentar una acción como exitosa hasta recibir confirmación.
 
 ## 4. Dirección visual
 
-### Referencia de acceso Figma
+### Identidad visual y paleta institucional
 
-Tomar del archivo `Inicio de sesión Bolsa de empleo/src/app/App.tsx`:
+Usar los componentes React Native existentes como base; no convertir la landing ni los formularios en una página web dentro de WebView. Mantener jerarquía clara, tarjetas sobrias, controles táctiles y estados accesibles.
 
-- Composición vertical centrada, cabecera de marca sobre una tarjeta clara.
-- Selector segmentado de rol **Estudiante / Empresa**.
-- Panel de estudiante con explicación del acceso institucional y CTA de Google.
-- Panel de empresa con correo, contraseña, mostrar/ocultar contraseña, recordar sesión e ingreso.
-- Jerarquía legible, campos amplios, estados de selección claros y elementos de identidad con maletín/graduación.
-- En celular, conservar la sensación de “pantalla de app”, pero permitir scroll si el teclado o la altura disponible lo requieren.
-
-No copiar la barra de estado dibujada como `9:41` ni los indicadores de señal/batería: son adornos del mockup, no UI web real. El botón “Regístrate” del panel de estudiante debe llevar al acceso Google, no prometer alta manual. La recuperación de contraseña no debe mostrarse como funcional mientras no exista ruta backend.
-
-### Paleta propuesta
-
-Unificar la experiencia alrededor de la paleta Figma para la nueva interfaz móvil y reservar los colores de estado para sus significados. No mezclar en una misma pantalla los distintos azules heredados sin tokens.
-
-| Token | Valor de referencia | Uso |
+| Token | Valor | Uso |
 |---|---|---|
-| `brand-primary` | `#0A3D8F` | Navegación, botones primarios, enlaces importantes. |
-| `brand-primary-strong` | `#0D1B4C` | Fondo oscuro de acceso y cabeceras institucionales. |
-| `brand-accent` | `#2D9B4E` | CTA positivo y detalles de marca; no usar como único indicador de éxito. |
-| `brand-accent-light` | `#7DD89A` | Acento sobre fondos oscuros. |
-| `page-background` | `#EEF3FB` | Fondo de superficies secundarias. |
-| `surface` | `#FFFFFF` | Formularios, tarjetas y hojas de navegación. |
-| `text-primary` | `#1C2B4A` | Texto principal. |
-| `text-muted` | `#5A6A8A` | Texto secundario, manteniendo contraste suficiente. |
-| `input-background` | `#F5F8FF` | Campos de entrada. |
-
-La aplicación actual también usa azul `#10235F`/`#273475` y verde `#00963F`; si se exige fidelidad exacta al manual institucional, validar estos tokens con el responsable de marca antes de reemplazarlos. Reutilizar los logotipos disponibles en `public/images/`; no dibujar un logo institucional nuevo.
+| `brand-primary` | `#10235F` | Navegación y cabeceras institucionales. |
+| `brand-dark` | `#0D1B4C` | Fondo oscuro y splash de Android. |
+| `brand-blue` | `#1A3A8F` | Acciones secundarias y acentos azules. |
+| `brand-green` | `#00963F` | CTA principal y acciones positivas. |
+| `brand-green-dark` | `#007832` | Texto/énfasis sobre superficies claras. |
+| `brand-green-light` | `#E6F7ED` | Selección, éxito y superficies verdes suaves. |
+| `brand-accent` | `#34D399`, `#10B981` | Acentos; nunca indicar estado solo por color. |
+| `panel` | `#F4F5F7` | Fondo claro de pantallas y paneles. |
+| `text-primary` | `#1A1F36` | Texto principal. |
+| `text-secondary` | `#6B7280` | Texto secundario y ayuda. |
+| `surface` | `#FFFFFF` | Tarjetas y formularios. |
 
 ### Tipografía, forma y densidad
 
-- El prototipo usa Nunito/Nunito Sans; la web actual carga Prompt. Preferir la tipografía indicada por el diseño aprobado y aplicar una jerarquía tipográfica consistente en todas las pantallas.
-- Usar fondo claro y superficies blancas en áreas de trabajo; reservar fondos oscuros/degradados sutiles para acceso y cabeceras.
-- Reutilizar una escala de espaciado coherente y radios moderados. Evitar exceso de sombras, gradientes, tarjetas redundantes y animaciones que distraigan.
-- Estados de vacante, empresa y postulación siempre llevan **texto más señal visual** (no solo color).
-- Idioma de interfaz: español. Fechas visibles en formato local `dd/mm/aaaa`; moneda en pesos colombianos cuando el dato permita calcularlo. `salary_range` es texto libre, no inferir salario numérico.
-- Nombre visible del producto: conservar **Emplea-UNIPAZ** como en la aplicación actual; el texto “UNIEmpleo” del prototipo es una variante de diseño a validar, no un cambio de marca automático.
+- Usar la tipografía del sistema salvo que exista una fuente institucional aprobada y configurada en Expo.
+- Mantener espaciado consistente, esquinas moderadas y sombras discretas; evitar gradientes decorativos y bloques densos propios de escritorio.
+- Estados de vacante, empresa y postulación llevan texto e indicador visual, no solo color.
+- Idioma español; fechas locales y salarios como texto cuando la API no entregue un valor numérico.
+- Nombre visible del producto: **UniEmpleo**.
 
 ## 5. Navegación y responsividad
 
 ### Navegación por contexto
 
-**Visitante**
+**Visitante:** landing con vacantes públicas que entrega la API, acceso y registro de empresa. El acceso de estudiante inicia Google; no simular registro manual.
 
-- Cabecera compacta con marca, acceso y registro de empresa.
-- Landing con propósito institucional, cifras reales, pasos del proceso y vacantes recientes disponibles desde el controlador.
-- CTA de estudiante conduce a autenticación Google; CTA de empresa conduce al registro/inicio de sesión.
-- No prometer acceso anónimo al listado completo: actualmente `/estudiante/vacantes` requiere autenticación.
+**Estudiante:** barra inferior Android con **Vacantes**, **Postulaciones** y **Mi perfil**. Vacantes incluye búsqueda, filtros, detalle y postulación.
 
-**Estudiante**
+**Empresa:** barra inferior con **Vacantes**, **Candidatos** y **Empresa**. Respetar el estado de aprobación del servidor; empresas no aprobadas no pueden publicar.
 
-- Navegación móvil inferior sugerida: **Inicio**, **Vacantes**, **Postulaciones**, **Perfil**. Favoritos accesibles desde Vacantes o desde un menú “Más”, sin perder su ruta.
-- En pantallas amplias, barra lateral actual o navegación superior secundaria.
-- Acciones de cuenta: perfil, notificaciones y cerrar sesión.
-
-**Empresa**
-
-- Navegación móvil inferior sugerida: **Panel**, **Vacantes**, **Postulantes**, **Perfil**; Reportes en menú secundario.
-- En escritorio, barra lateral con Panel, Mis vacantes, Perfil y Reportes. Postulaciones también debe quedar disponible desde panel y navegación secundaria porque su ruta ya existe.
-- Si la empresa no está aprobada, mantener el aviso de estado; bloquear visualmente la creación de vacantes y explicar que requiere aprobación.
-
-**Administrador**
-
-- Navegación móvil con accesos principales a **Panel**, **Empresas**, **Usuarios** y **Vacantes**; Reportes y Perfil en menú “Más” o drawer.
-- En escritorio, mantener la barra lateral entre pantallas, con indicador del número de empresas pendientes cuando esté disponible.
-- Acciones administrativas destructivas/revocatorias requieren confirmación explícita.
+**Administrador:** revisión de empresas pendientes. No mostrar KPIs, usuarios o reportes que la API consumida por la app no proporcione.
 
 ### Reglas responsivas
 
-- Enfoque mobile-first; probar anchuras **320, 360, 390, 768, 1024 y 1440 px**.
-- `320–767 px`: una columna; navegación compacta e inferior para sesiones autenticadas; filtros en panel desplegable o formulario apilado; tarjetas en vez de tablas.
-- `768–991 px`: priorizar una o dos columnas según densidad; menú lateral colapsable.
-- `992 px o más`: conservar sidebar y paneles multicolumna donde ayuden a comparar información.
-- Evitar desbordamiento horizontal de la página. Las tablas densas deben convertirse a tarjetas/filas expandibles en celular; no depender de una tabla que obligue a desplazamiento lateral para completar una tarea.
-- Área táctil recomendada: mínimo **44 × 44 CSS px** para controles importantes. Inputs, botones y acciones primarias de ancho cómodo en móvil.
-- Respetar `safe-area-inset-bottom` en la navegación fija inferior y dejar espacio al final del contenido para que esta no tape formularios.
-- El teclado móvil no debe tapar el campo activo, errores, botón de guardar ni CTA de postulación.
-- No fijar altura de pantalla que corte contenido; permitir scroll vertical natural y zoom del navegador.
+- Enfoque Android portrait; probar al menos **320, 360 y 390 dp** de ancho.
+- Apilar contenido en una columna, usar listas/tarjetas y evitar scroll horizontal.
+- Controles principales con área táctil de al menos **44 × 44 dp**.
+- Respetar safe areas y dejar espacio para la barra inferior; no tapar CTA, formularios ni teclado.
+- Permitir scroll vertical natural; no fijar alturas que corten contenido.
+- Expo Web puede usarse para smoke tests, pero el criterio final es el bundle y la interacción Android.
 
 ## 6. Autenticación, registro y salida
 
 ### Inicio de sesión
 
-**Pantalla:** `GET /login` (`login`), envío `POST /login`.
-
-1. La pantalla inicia con la opción Estudiante seleccionada como en Figma.
-2. Estudiante: botón “Continuar con Google” a `GET /auth/google` (`auth.google`); mostrar que se requiere correo `@unipaz.edu.co`.
-3. Empresa y administrador: correo, contraseña, recordar sesión y botón Ingresar. Administrador usa el mismo formulario tradicional, sin selector de rol administrativo.
-4. Error de credenciales, cuenta inactiva, acceso no permitido y error de Google deben mostrarse de forma comprensible sin borrar el correo.
-5. Tras login, el backend redirige por rol: estudiante a `student.dashboard`, empresa a `company.dashboard`, administrador a `admin.dashboard`.
-6. El login tradicional tiene límite actual de **5 intentos por minuto**. No ocultar los errores HTTP devueltos por el servidor.
-7. Proteger contraseña con `autocomplete="current-password"` y control accesible para mostrar/ocultar.
-
-El callback de Google valida el dominio, crea el perfil inicial si es un estudiante nuevo y rechaza cuentas desactivadas o usuarios no estudiantes. La autorización y el alta ocurren en servidor; el frontend no debe simular un usuario autenticado.
+Estudiantes usan autenticación Google y empresas/administradores usan correo y contraseña. Llamar a `POST /api/v1/auth/google` o `POST /api/v1/auth/login`; mantener el token en SecureStore y verificar la sesión con `GET /api/v1/auth/me`. Mostrar errores del servidor sin borrar el correo.
 
 ### Registro de empresa
 
-**Pantalla:** `GET /register/empresa` (`company.register`), envío `POST /register/empresa` (`company.register.store`).
-
-Formulario de una sola página, organizado en secciones que se puedan recorrer con scroll en móvil:
-
-1. **Datos de acceso:** nombre del responsable, correo, contraseña y confirmación.
-2. **Datos de empresa:** nombre, NIT, sector, teléfono, persona de contacto, dirección y descripción.
-3. Explicar antes del envío que la empresa queda **pendiente** y necesita aprobación administrativa para publicar vacantes.
-
-Reglas confirmadas por servidor:
-
-| Campo | Regla de validación actual |
-|---|---|
-| `name` | Obligatorio, texto, máximo 255 caracteres. |
-| `email` | Obligatorio, formato correo, único en usuarios. |
-| `password` | Obligatoria, mínimo 8 caracteres y confirmación idéntica. |
-| `company_name` | Obligatorio, texto, máximo 255 caracteres. |
-| `nit` | Opcional, único; solo dígitos, puntos y guion. |
-| `sector` | Obligatorio, texto, máximo 100 caracteres. |
-| `contact_person` | Obligatorio, texto, máximo 255 caracteres. |
-| `phone` | Obligatorio, texto, máximo 20 caracteres. |
-| `address` | Obligatoria en servidor, texto, máximo 255 caracteres. |
-| `description` | Obligatoria en servidor, texto, 10–1.000 caracteres. |
-
-El servidor acepta sectores como texto, no como una enumeración fija. Las listas de sectores de registro y edición existentes difieren; mantener valores ingresados y no asumir que la lista visual equivale a una regla backend.
-
-Al completar el registro no iniciar sesión automáticamente: el servidor vuelve a login con mensaje de registro pendiente.
+Registrar empresas mediante `POST /api/v1/auth/register/company`. Solicitar responsable, correo, contraseña y confirmación, razón social, sector, contacto, teléfono, dirección y descripción; NIT es opcional. Mostrar el estado pendiente y no habilitar publicación hasta que el servidor apruebe la empresa.
 
 ### Registro de estudiantes y administración
 
-- **Estudiante:** no existe formulario manual. La creación ocurre mediante Google OAuth al ingresar por primera vez y se crea un perfil académico inicial por completar.
-- **Administrador:** no hay registro público. El acceso es con cuenta ya provisionada y correo/contraseña.
-- **Olvidé mi contraseña:** la migración tiene una tabla de tokens, pero `routes/web.php` no expone rutas/controlador de recuperación. No presentar el enlace del prototipo como funcional; ocultarlo o mostrarlo deshabilitado solo si el equipo decide conservar esa invitación.
+- **Estudiante:** no existe registro manual; usar Google.
+- **Administrador:** no hay registro público; autenticar la cuenta provisionada.
+- **Recuperación de contraseña:** no está disponible en el contrato de la API; no ofrecer un flujo falso.
 
 ### Cerrar sesión
 
-Enviar `POST /logout` con CSRF. Después del cierre, volver a la landing y descartar el estado visual autenticado. No conservar botones de postulación accesibles por una sesión anterior ni confiar únicamente en esconder pantallas en el cliente.
+Enviar `POST /api/v1/auth/logout`, borrar la sesión local y volver a la landing incluso si el servidor no responde. Las acciones protegidas siempre deben validar el token en el servidor.
 
-## 7. Pantallas funcionales por rol
+## 7. Referencia funcional heredada (no es contrato móvil)
+
+> Las rutas y capacidades descritas a continuación pertenecen a una versión Laravel web anterior. Se conservan como contexto de producto, pero no son instrucciones para crear pantallas, endpoints ni acciones en Expo. Para la app móvil, prevalecen las pantallas actuales por rol y el contrato REST de la sección 8.
 
 ### 7.1 Público
 
@@ -415,29 +316,24 @@ Conservar valores previos tras errores; mostrar el asterisco y leyenda “* Camp
 - Indicadores de estudiantes, empresas, vacantes, postulaciones; distribución por estado y áreas.
 - Perfil `GET /admin/perfil`; actualizar nombre/correo y contraseña confirmada con `PUT /admin/perfil`.
 
-## 8. Contrato de rutas de referencia
+## 8. Contrato REST de referencia
 
-Los nombres entre paréntesis son los nombres actuales de Laravel. Utilizar `route('...')` en Blade en vez de duplicar URLs como texto en múltiples vistas.
+Usar `src/Api/docs/API_DOCUMENTATION.md` y `src/services/api.ts` como fuentes contractuales. El cliente recibe `EXPO_PUBLIC_API_URL` como host base y agrega `/api/v1`. La app no debe llamar directamente a rutas web de Laravel.
 
-| Área | Método y ruta | Nombre / acción |
-|---|---|---|
-| Pública | `GET /` | `home` |
-| Login | `GET /login`, `POST /login` | `login` |
-| Registro empresa | `GET /register/empresa`, `POST /register/empresa` | `company.register`, `company.register.store` |
-| Google | `GET /auth/google`, `GET /auth/google/callback` | `auth.google`, `auth.google.callback` |
-| Sesión | `POST /logout` | `logout` |
-| Notificaciones | `GET /notifications/{id}/read` | `notifications.read` |
-| CV HTML | `GET /hojas-de-vida/{user}` | `resumes.show` |
-| Estudiante | `GET /estudiante/dashboard`, `/perfil`, `/perfil/hoja-de-vida`, `/postulaciones`, `/favoritos`, `/vacantes`, `/vacantes/{jobPosting}` | `student.dashboard`, `student.profile`, `student.profile.resume`, `student.applications`, `student.jobs.favorites`, `student.jobs`, `student.jobs.show` |
-| Favorito/postulación | `POST /estudiante/vacantes/{jobPosting}/favorito`, `POST /estudiante/vacantes/{jobPosting}/postular` | `student.jobs.favorite`, `student.jobs.apply` |
-| Empresa | `GET /empresa/dashboard`, `/perfil`, `/postulaciones`, `/reportes` | `company.dashboard`, `company.profile`, `company.applications`, `company.reports` |
-| Empresa — vacantes | Recurso `/empresa/vacantes` (index/create/store/show/edit/update/destroy) y `POST /empresa/vacantes/{jobPosting}/toggle` | `company.jobs.*`, `company.jobs.toggle` |
-| Empresa — postulaciones | `PUT /empresa/postulaciones/{application}` | `company.applications.update` |
-| Administración | `GET /admin/dashboard`, `/perfil`, `/empresas`, `/usuarios`, `/vacantes`, `/vacantes/{jobPosting}`, `/reportes` | `admin.dashboard`, `admin.profile`, `admin.companies`, `admin.users`, `admin.vacancies`, `admin.vacancies.show`, `admin.reports` |
-| Administración — acciones | `PUT /admin/perfil`; `POST /admin/empresas/{company}/aprobar|rechazar`; `DELETE /admin/empresas/{company}`; `POST /admin/usuarios/{user}/toggle`; `POST /admin/vacantes/{jobPosting}/toggle` | Rutas `admin.*` correspondientes en `routes/web.php` |
-| Reportes PDF | `GET /empresa/reportes/pdf`, `GET /admin/reportes/pdf` | `company.reports.pdf`, `admin.reports.pdf` |
+| Área | Operaciones consumidas por la app |
+|---|---|
+| Salud pública | `GET /api/v1` |
+| Vacantes públicas | `GET /api/v1/jobs` con `search`, `modalidad`, `ciudad`, `page` y `per_page` |
+| Autenticación | `POST /api/v1/auth/google`, `POST /api/v1/auth/login`, `GET /api/v1/auth/me`, `POST /api/v1/auth/logout` |
+| Registro empresa | `POST /api/v1/auth/register/company` |
+| Perfil estudiante | `GET` / `PUT /api/v1/students/profile`; `POST /api/v1/students/upload-cv` |
+| Postulaciones estudiante | `GET /api/v1/applications/student`; `POST /api/v1/applications` |
+| Empresa | `GET` / `PUT /api/v1/companies/profile`; `GET /api/v1/companies/status`; `GET /api/v1/company/jobs` |
+| Vacantes empresa | `POST /api/v1/jobs`; `PUT /api/v1/jobs/{id}` |
+| Candidatos | `GET /api/v1/applications/job/{jobId}`; `PUT /api/v1/applications/{id}/status` |
+| Administración | `GET /api/v1/admin/companies/pending`; `PUT /api/v1/admin/companies/{id}/approve` |
 
-Las rutas no enumeradas aquí se deben verificar en `routes/web.php` antes de diseñar una acción. Las rutas administrativas y por rol requieren autenticación y middleware de rol; las vacantes de empresa también requieren aprobación.
+Enviar `Authorization: Bearer <token>` a operaciones protegidas. Si una ruta responde 404, verificar que el host despliegue el gateway actual y `/api/v1`; un `200` en `/` no basta para validar la API.
 
 ## 9. Estados, datos y reglas que la UI debe representar
 
@@ -474,9 +370,9 @@ Para cada pantalla que consume o envía datos, diseñar:
 Requisitos de accesibilidad:
 
 - Cumplir WCAG 2.1 AA como mínimo: contraste 4.5:1 para texto normal y 3:1 para texto grande.
-- Inputs con `<label>` asociado; ayuda y error enlazados al campo; indicar campos requeridos también con texto/leyenda.
-- Navegación completa por teclado, foco visible, orden lógico y foco gestionado al abrir/cerrar diálogos.
-- Botones con nombre accesible aun cuando solo tengan icono; informar cambios y errores mediante regiones de estado accesibles.
+- Inputs con nombre accesible, ayuda y error asociados; indicar campos requeridos también con texto.
+- Controles compatibles con TalkBack y VoiceOver; en Expo Web, conservar navegación por teclado y foco visible.
+- Botones con nombre accesible aun cuando solo tengan icono; anunciar cambios y errores mediante estados accesibles.
 - No usar color como único indicador. Añadir texto, icono o etiqueta de estado.
 - Respetar `prefers-reduced-motion`; animaciones cortas y no necesarias para comprender la interfaz.
 - Formularios de archivo explican formato y tamaño; controles táctiles accesibles y sin gestos exclusivos.
@@ -490,37 +386,36 @@ La especificación se considera correctamente implementada cuando:
 3. Cada acción visible usa la ruta/método/nombre de campo existente o se documenta como bloqueo que requiere aprobación del backend.
 4. Estudiante puede recorrer perfil → búsqueda → detalle → postulación → seguimiento; CV existente no se vuelve a exigir y las duplicidades/vacantes vencidas se reflejan.
 5. Empresa pendiente no puede iniciar publicación; empresa aprobada puede administrar vacantes y estados de postulaciones, manteniendo privadas sus notas.
-6. Administración puede revisar empresas, usuarios, vacantes y reportes sin perder la navegación entre módulos.
-7. No hay scroll horizontal de página ni controles tapados a 320/360/390/768/1024/1440 px; tablas se adaptan para lectura y acción en móvil.
+6. Administración puede revisar las empresas pendientes servidas por la API.
+7. No hay scroll horizontal ni controles tapados a 320/360/390 dp; listas y formularios son utilizables en Android.
 8. Navegación inferior no tapa contenido, formularios ni CTA; el teclado móvil deja completar y enviar formularios.
-9. Cada lista/formulario tiene estados de carga, error, vacío, éxito y permiso aplicables; los estados son accesibles por teclado/lector.
+9. Cada lista/formulario tiene estados de carga, error, vacío, éxito y permiso aplicables; los estados son accesibles por lector de pantalla.
 10. La interfaz usa datos reales del servidor y mantiene la identidad visual institucional aprobada.
-11. Búsqueda, login, registro, subida de CV, favoritos, postulación, cambio de estados, exportación y cierre de sesión se verifican en el navegador contra el backend; no se consideran verificados por render o mocks.
+11. Búsqueda, login, registro, subida de CV, postulación, actualización de estados y cierre de sesión usan el gateway; no se consideran verificados por render o mocks.
+12. La URL pública expone `/api/v1` y los endpoints consumidos; una respuesta 404 en el gateway bloquea la validación end-to-end.
 
 ### Validación recomendada para la implementación
 
-- Compilar assets Laravel: `npm run build`.
-- Suite backend existente: `php artisan test`.
-- Revisar rutas disponibles: `php artisan route:list`.
-- Prueba visual/manual en viewport y navegador móvil a los tamaños indicados y con teclado, lector/teclado y zoom.
-- Si la implementación cambia el mecanismo de formularios, auth o rutas, añadir pruebas funcionales enfocadas para esos flujos antes de integrarla.
+- Cliente: `node --experimental-strip-types --test tests\api-client.test.mjs tests\api-config.test.mjs`.
+- Tipos y lint: `npx tsc --noEmit` y `npm run lint`.
+- Bundle Android: `npx expo export --platform android`.
+- Prueba en Expo Go con Android, lector de pantalla, teclado virtual y estados de red.
 
-## 12. Límites y decisiones pendientes
+## 12. Límites y pendientes de integración
 
 ### Siempre
 
-- Preservar rutas nombradas, sesión Laravel, protección CSRF, validaciones y control de permisos.
-- Reutilizar datos y componentes de las vistas existentes; mantener consistencia en estados, idioma, fechas y mensajes.
-- Mostrar en UI los límites y requisitos reales del servidor y manejar errores explícitamente.
-- Probar en móviles y escritorios, incluidos estados vacíos y fallos de red/validación.
+- Preservar los endpoints, campos y permisos del contrato REST y manejar errores explícitamente.
+- Mantener consistencia en estados, idioma, fechas y mensajes.
+- Mostrar requisitos reales del servidor; no simular resultados exitosos.
+- Probar en Android, incluidos estados vacíos y fallos de red/validación.
 
 ### Consultar antes de
 
-- Convertir el sitio responsivo en aplicación nativa o PWA.
-- Añadir dependencias, cambiar Blade/Bootstrap por React o crear una API.
-- Cambiar colores/tipografías oficiales, agregar registro de estudiantes/admin o recuperación de contraseña.
-- Habilitar listado público, filtros de ubicación/salario, edición de listas de áreas/carreras o nuevas acciones administrativas.
-- Cambiar rutas, validaciones, estados, tamaños permitidos, política de archivos o comportamiento de sesión.
+- Añadir dependencias, crear endpoints o cambiar autenticación y permisos.
+- Agregar registro de estudiantes/admin o recuperación de contraseña.
+- Incorporar filtros o acciones que no existan en el gateway.
+- Cambiar validaciones, estados, tamaños permitidos o política de archivos.
 
 ### Nunca
 
@@ -529,27 +424,14 @@ La especificación se considera correctamente implementada cuando:
 - Exponer notas internas, permitir acceso a CV sin la autorización existente o asumir rol solo por selección visual.
 - Eliminar/ocultar errores del servidor, desactivar controles de seguridad o declarar como funcional un enlace sin endpoint.
 
-### Preguntas abiertas para una siguiente fase
+### Pendiente actual
 
-1. ¿La entrega final se mantiene como web responsiva Laravel o se requiere empaquetado PWA/app nativa?
-2. ¿Se autorizará que visitantes vean y filtren vacantes antes de iniciar sesión?
-3. ¿Se desean filtros de ubicación/salario y recuperación de contraseña? Requieren contrato/backend.
-4. ¿Debe existir registro manual de estudiante, o se conserva el alta exclusivamente mediante Google OAuth institucional?
-5. ¿Cuál es la paleta/tipografía definitiva entre Figma y el tema institucional ya desplegado?
-6. ¿Se confirma un plazo de aprobación empresarial que pueda prometerse al usuario?
+El host Railway compartido responde correctamente en `/`, pero actualmente devuelve 404 en `/api/v1` y `/api/v1/jobs`. Confirmar el despliegue de las rutas Next.js y la configuración `LARAVEL_API_URL` antes de declarar operativa la conexión móvil.
 
 ## 13. Archivos de referencia
 
-- [`routes/web.php`](routes/web.php)
-- [`app/Http/Controllers/Auth/GoogleController.php`](app/Http/Controllers/Auth/GoogleController.php)
-- [`app/Http/Controllers/Auth/CompanyAuthController.php`](app/Http/Controllers/Auth/CompanyAuthController.php)
-- [`app/Http/Controllers/Student/JobController.php`](app/Http/Controllers/Student/JobController.php)
-- [`app/Http/Controllers/Company/JobPostingController.php`](app/Http/Controllers/Company/JobPostingController.php)
-- [`app/Http/Controllers/Admin/DashboardController.php`](app/Http/Controllers/Admin/DashboardController.php)
-- [`resources/views/layouts/app.blade.php`](resources/views/layouts/app.blade.php)
-- [`resources/views/home.blade.php`](resources/views/home.blade.php)
-- [`resources/views/auth/login.blade.php`](resources/views/auth/login.blade.php)
-- [`resources/views/auth/company-register.blade.php`](resources/views/auth/company-register.blade.php)
-- [`Inicio de sesión Bolsa de empleo/src/app/App.tsx`](Inicio%20de%20sesi%C3%B3n%20Bolsa%20de%20empleo/src/app/App.tsx)
-- [`Inicio de sesión Bolsa de empleo/src/styles/theme.css`](Inicio%20de%20sesi%C3%B3n%20Bolsa%20de%20empleo/src/styles/theme.css)
-- [`mejoras_qa_dev.md`](mejoras_qa_dev.md)
+- [`src/app/index.tsx`](../app/index.tsx)
+- [`src/services/api.ts`](../services/api.ts)
+- [`src/Api/docs/API_DOCUMENTATION.md`](../../Api/docs/API_DOCUMENTATION.md)
+- [`src/Api/lib/laravel-bridge.ts`](../../Api/lib/laravel-bridge.ts)
+- [`app.json`](../../app.json)

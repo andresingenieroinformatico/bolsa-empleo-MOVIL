@@ -103,9 +103,14 @@ export async function forwardToLaravel(
       method,
       headers,
       body: fetchBody,
+      signal: AbortSignal.timeout(15000),
     });
 
     statusCode = laravelResponse.status;
+
+    if (statusCode === 204) {
+      return new NextResponse(null, { status: 204 });
+    }
 
     // Verificar si la respuesta es JSON
     const responseContentType = laravelResponse.headers.get("content-type") || "";
@@ -174,11 +179,7 @@ export async function forwardToLaravel(
     return NextResponse.json(
       {
         success: false,
-        message: "No fue posible conectar con el backend de Laravel en 127.0.0.1:8000. Verifique que el servicio PHP Artisan esté activo.",
-        errors: {
-          bridge_error: error.message,
-          target_url: laravelUrl.toString(),
-        },
+        message: "No fue posible conectar con el servicio de empleos. Intenta de nuevo más tarde.",
       },
       { status: 502 }
     );

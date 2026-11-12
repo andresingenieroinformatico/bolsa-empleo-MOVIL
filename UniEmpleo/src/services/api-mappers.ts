@@ -7,7 +7,7 @@ import {
   JobModality,
   JobOffer,
   StudentProfile,
-} from '@/data/mock-data';
+} from '../data/mock-data';
 import { ApiError } from './api';
 
 type JsonRecord = Record<string, unknown>;
@@ -135,6 +135,7 @@ export function mapJob(value: unknown): JobOffer {
     title: requiredString(source, 'título', 'title', 'titulo'),
     description: stringValue(source, 'description', 'descripcion') || '',
     requirements,
+    responsibilities: stringValue(source, 'responsibilities', 'responsabilidades') || '',
     area: stringValue(source, 'area', 'área') || 'No especificada',
     program:
       stringValue(source, 'program', 'programa') ||
@@ -142,6 +143,9 @@ export function mapJob(value: unknown): JobOffer {
       'No especificado',
     modality: modality(source.modality ?? source.modalidad),
     contractType: contractType(source.contract_type ?? source.tipo_contrato),
+    schedule: stringValue(source, 'schedule', 'horario'),
+    salaryRange: stringValue(source, 'salary_range', 'salario'),
+    salaryNegotiable: source.salary_negotiable === true,
     deadline: stringValue(source, 'deadline', 'fecha_limite') || '',
     location: stringValue(source, 'location', 'ubicacion', 'ciudad') || 'No especificada',
     status: mappedStatus,

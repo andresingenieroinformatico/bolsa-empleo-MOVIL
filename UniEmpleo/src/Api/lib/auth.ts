@@ -3,7 +3,13 @@ import bcrypt from "bcryptjs";
 import { NextRequest } from "next/server";
 import prisma from "./prisma";
 
-const JWT_SECRET = process.env.JWT_SECRET || "unipaz_secret_jwt_key_2024_secure";
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error("JWT_SECRET debe configurarse con al menos 32 caracteres.");
+  }
+  return secret;
+}
 
 export interface TokenPayload {
   userId: number;
@@ -20,12 +26,12 @@ export function comparePassword(password: string, hash: string): Promise<boolean
 }
 
 export function signToken(payload: TokenPayload, expiresIn: any = "7d"): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn } as jwt.SignOptions);
+  return jwt.sign(payload, getJwtSecret(), { expiresIn } as jwt.SignOptions);
 }
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    return jwt.verify(token, getJwtSecret()) as TokenPayload;
   } catch (error) {
     return null;
   }

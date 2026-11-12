@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -11,11 +11,12 @@ import {
 } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
+import { SkeletonBlock } from '@/components/SkeletonBlock';
 import { Application, ApplicationStatus, JobOffer } from '@/data/mock-data';
 
 interface CandidatosViewProps {
   jobs: JobOffer[];
-  applications: Application[];
+  onLoadApplicants: (jobId: string) => Promise<Application[]>;
   onUpdateApplicationStatus: (
     appId: string,
     newStatus: ApplicationStatus,
@@ -26,11 +27,11 @@ interface CandidatosViewProps {
 
 export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
   jobs,
-  applications,
+  onLoadApplicants,
   onUpdateApplicationStatus,
 }) => {
   const [selectedJobId, setSelectedJobId] = useState<string>(
-    jobs.length > 0 ? jobs[0].id : ''
+    jobs[0]?.id || ''
   );
   const [activeApplication, setActiveApplication] = useState<Application | null>(null);
 
@@ -38,21 +39,53 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
   const [newStatus, setNewStatus] = useState<ApplicationStatus>('reviewed');
   const [companyNotes, setCompanyNotes] = useState('');
   const [interviewNote, setInterviewNote] = useState('');
-  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
   const [statusUpdatedSuccess, setStatusUpdatedSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSavingStatus, setIsSavingStatus] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isLoadingApplicants, setIsLoadingApplicants] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [applicantReloadKey, setApplicantReloadKey] = useState(0);
 
-  // Filtrar postulaciones por la vacante seleccionada
   const jobApplications = applications.filter((app) => app.jobId === selectedJobId);
   const selectedJob = jobs.find((j) => j.id === selectedJobId);
+
+  useEffect(() => {
+    if (!selectedJobId) return;
+    let cancelled = false;
+
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return undefined;
+        setApplications([]);
+        setLoadError(null);
+        setIsLoadingApplicants(true);
+        return onLoadApplicants(selectedJobId);
+      })
+      .then((items) => {
+        if (!cancelled && items) setApplications(items);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setLoadError(
+            error instanceof Error ? error.message : 'No fue posible cargar los candidatos.',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingApplicants(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applicantReloadKey, onLoadApplicants, selectedJobId]);
 
   const handleOpenManageModal = (app: Application) => {
     setActiveApplication(app);
     setNewStatus(app.status);
     setCompanyNotes(app.companyNotes || '');
     setInterviewNote(app.interviewNote || '');
-    setDownloadSuccess(null);
     setStatusUpdatedSuccess(null);
   };
 
@@ -67,6 +100,19 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
         companyNotes.trim(),
         newStatus === 'interview' ? interviewNote.trim() : undefined,
       );
+      setApplications((current) =>
+        current.map((application) =>
+          application.id === activeApplication.id
+            ? {
+                ...application,
+                status: newStatus,
+                companyNotes: companyNotes.trim(),
+                interviewNote:
+                  newStatus === 'interview' ? interviewNote.trim() : application.interviewNote,
+              }
+            : application,
+        ),
+      );
       setStatusUpdatedSuccess(`El estado se actualizó a "${newStatus}".`);
       setTimeout(() => {
         setActiveApplication(null);
@@ -77,12 +123,6 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
     } finally {
       setIsSavingStatus(false);
     }
-  };
-
-  // Criterio HU-07 Escenario 2: Descarga de CV por ruta autenticada
-  const handleDownloadCv = () => {
-    setDownloadSuccess('El API actual no expone una ruta documentada para descargar la hoja de vida de candidatos.');
-    setTimeout(() => setDownloadSuccess(null), 4500);
   };
 
   return (
@@ -98,6 +138,8 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
                 styles.jobTab,
                 selectedJobId === job.id && styles.jobTabActive,
               ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedJobId === job.id }}
               onPress={() => setSelectedJobId(job.id)}>
               <Text
                 style={[
@@ -121,17 +163,55 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
         </View>
       )}
 
-      {/* Listado de Candidatos */}
+      {loadError && (
+        <View style={styles.loadError}>
+          <Text style={styles.loadErrorText}>{loadError}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={styles.retryButton}
+            onPress={() => setApplicantReloadKey((current) => current + 1)}>
+            <Text style={styles.retryText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isLoadingApplicants ? (
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel="Cargando candidatos"
+          style={styles.loadingState}>
+          {Array.from({ length: 3 }, (_, index) => (
+            <View key={`candidate-skeleton-${index}`} style={styles.candidateSkeleton}>
+              <View style={styles.candidateSkeletonHeader}>
+                <SkeletonBlock style={styles.candidateSkeletonAvatar} />
+                <View style={styles.candidateSkeletonCopy}>
+                  <SkeletonBlock style={styles.candidateSkeletonName} />
+                  <SkeletonBlock style={styles.candidateSkeletonMeta} />
+                </View>
+              </View>
+              <SkeletonBlock style={styles.candidateSkeletonLine} />
+              <SkeletonBlock style={styles.candidateSkeletonLineShort} />
+            </View>
+          ))}
+        </View>
+      ) : (
+      /* Listado de Candidatos */
       <FlatList
         data={jobApplications}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <EmptyState
-            icon="👥"
-            title="Sin postulantes todavía"
-            description="Los estudiantes que se postulen a esta vacante aparecerán en esta lista para su evaluación."
-          />
+          loadError ? undefined : (
+            <EmptyState
+              icon="👥"
+              title={selectedJob ? 'Sin postulantes todavía' : 'No tienes vacantes'}
+              description={
+                selectedJob
+                  ? 'Los estudiantes que se postulen a esta vacante aparecerán en esta lista para su evaluación.'
+                  : 'Cuando publiques una vacante, sus candidatos aparecerán aquí.'
+              }
+            />
+          )
         }
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -171,6 +251,7 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
           </TouchableOpacity>
         )}
       />
+      )}
 
       {/* Modal de Gestión de Candidato (HU-07) */}
       <Modal
@@ -199,25 +280,6 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
                 </Text>
 
                 <ScrollView style={{ maxHeight: 380 }}>
-                  {/* Descarga Segura de CV (HU-07 Escenario 2) */}
-                  <View style={styles.cvDownloadSection}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cvTitle}>Hoja de Vida del Estudiante</Text>
-                      <Text style={styles.cvFile}>{activeApplication.cvFileName}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.downloadBtn}
-                      onPress={handleDownloadCv}>
-                      <Text style={styles.downloadBtnText}>⬇️ Descargar (Seguro)</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {downloadSuccess && (
-                    <View style={styles.downloadAlert}>
-                      <Text style={styles.downloadAlertText}>{downloadSuccess}</Text>
-                    </View>
-                  )}
-
                   {/* Cambio de Estado (HU-07 Escenarios 3, 4, 5, 6) */}
                   <Text style={styles.sectionHeading}>Actualizar Estado del Proceso</Text>
                   <View style={styles.statusButtonsGrid}>
@@ -295,8 +357,8 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
                 )}
 
                 {actionError && (
-                  <View style={styles.downloadAlert}>
-                    <Text style={styles.downloadAlertText}>{actionError}</Text>
+                  <View style={styles.errorAlert}>
+                    <Text style={styles.errorAlertText}>{actionError}</Text>
                   </View>
                 )}
 
@@ -320,9 +382,13 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    backgroundColor: '#F4F5F7',
   },
   jobSelectorArea: {
+    width: '100%',
     backgroundColor: '#FFFFFF',
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -331,7 +397,7 @@ const styles = StyleSheet.create({
   selectorLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#4B5563',
+    color: '#6B7280',
     paddingHorizontal: 16,
     marginBottom: 8,
   },
@@ -342,18 +408,18 @@ const styles = StyleSheet.create({
   jobTab: {
     paddingHorizontal: 14,
     paddingVertical: 7,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F4F5F7',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   jobTabActive: {
-    backgroundColor: '#0F766E',
-    borderColor: '#0F766E',
+    backgroundColor: '#00963F',
+    borderColor: '#00963F',
   },
   jobTabText: {
     fontSize: 12,
-    color: '#374151',
+    color: '#6B7280',
     fontWeight: '600',
   },
   jobTabTextActive: {
@@ -364,22 +430,73 @@ const styles = StyleSheet.create({
     margin: 16,
     marginBottom: 4,
     padding: 12,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: '#E6F7ED',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#CCFBF1',
+    borderColor: '#E6F7ED',
+  },
+  loadingState: {
+    gap: 12,
+    padding: 16,
+    width: '100%',
+    maxWidth: 920,
+    alignSelf: 'center',
+  },
+  candidateSkeleton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 12,
+  },
+  candidateSkeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  candidateSkeletonAvatar: { width: 38, height: 38, borderRadius: 19 },
+  candidateSkeletonCopy: { flex: 1, gap: 6 },
+  candidateSkeletonName: { width: '46%', height: 14 },
+  candidateSkeletonMeta: { width: '32%', height: 10 },
+  candidateSkeletonLine: { width: '84%', height: 10 },
+  candidateSkeletonLineShort: { width: '56%', height: 10 },
+  },
+  loadError: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 10,
+  },
+  loadErrorText: {
+    color: '#991B1B',
+    fontSize: 12,
+  },
+  retryButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  retryText: {
+    color: '#10235F',
+    fontWeight: '700',
+    fontSize: 12,
   },
   summaryTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F766E',
+    color: '#00963F',
   },
   summaryMeta: {
     fontSize: 12,
-    color: '#115E59',
+    color: '#007832',
     marginTop: 2,
   },
   listContent: {
+    width: '100%',
+    maxWidth: 920,
+    alignSelf: 'center',
     padding: 16,
     paddingBottom: 40,
     gap: 12,
@@ -401,7 +518,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#0F766E',
+    backgroundColor: '#00963F',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -413,7 +530,7 @@ const styles = StyleSheet.create({
   candidateName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1A1F36',
   },
   candidateProgram: {
     fontSize: 12,
@@ -424,7 +541,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: '#F4F5F7',
   },
   appliedDateText: {
     fontSize: 11,
@@ -432,11 +549,11 @@ const styles = StyleSheet.create({
   },
   cvFileText: {
     fontSize: 11,
-    color: '#0F766E',
+    color: '#00963F',
     fontWeight: '600',
   },
   notesPreviewBox: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F4F5F7',
     padding: 8,
     borderRadius: 8,
     marginTop: 4,
@@ -444,7 +561,7 @@ const styles = StyleSheet.create({
   notesPreviewLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#4B5563',
+    color: '#6B7280',
   },
   notesPreviewText: {
     fontSize: 11,
@@ -457,7 +574,7 @@ const styles = StyleSheet.create({
   },
   manageHint: {
     fontSize: 12,
-    color: '#0F766E',
+    color: '#00963F',
     fontWeight: '700',
   },
   modalOverlay: {
@@ -467,6 +584,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalCard: {
+    width: '100%',
+    maxWidth: 560,
+    maxHeight: '90%',
+    alignSelf: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
@@ -479,8 +600,8 @@ const styles = StyleSheet.create({
   tag: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0F766E',
-    backgroundColor: '#CCFBF1',
+    color: '#00963F',
+    backgroundColor: '#E6F7ED',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -496,7 +617,7 @@ const styles = StyleSheet.create({
   modalCandidateName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#111827',
+    color: '#1A1F36',
     marginTop: 6,
   },
   modalCandidateSub: {
@@ -504,55 +625,23 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 12,
   },
-  cvDownloadSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDFA',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#99F6E4',
-    marginBottom: 10,
-    gap: 8,
-  },
-  cvTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F766E',
-  },
-  cvFile: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 1,
-  },
-  downloadBtn: {
-    backgroundColor: '#0F766E',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  downloadBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  downloadAlert: {
-    backgroundColor: '#F0FDF4',
+  errorAlert: {
+    backgroundColor: '#FEF2F2',
     padding: 8,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#FECACA',
   },
-  downloadAlertText: {
-    color: '#15803D',
+  errorAlertText: {
+    color: '#991B1B',
     fontSize: 10,
     lineHeight: 14,
   },
   sectionHeading: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#1A1F36',
     marginBottom: 8,
   },
   statusButtonsGrid: {
@@ -564,7 +653,7 @@ const styles = StyleSheet.create({
   statusSelectBtn: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F4F5F7',
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -572,13 +661,13 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   statusSelectBtnActive: {
-    backgroundColor: '#0F766E',
-    borderColor: '#0F766E',
+    backgroundColor: '#00963F',
+    borderColor: '#00963F',
   },
   statusSelectText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#374151',
+    color: '#6B7280',
   },
   interviewFieldBox: {
     marginBottom: 10,
@@ -589,21 +678,21 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#6B7280',
     marginBottom: 4,
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F4F5F7',
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 7,
     fontSize: 12,
-    color: '#111827',
+    color: '#1A1F36',
   },
   saveActionBtn: {
-    backgroundColor: '#0F766E',
+    backgroundColor: '#00963F',
     paddingVertical: 13,
     borderRadius: 10,
     alignItems: 'center',
@@ -615,13 +704,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   successAlert: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#E6F7ED',
     padding: 8,
     borderRadius: 8,
     marginTop: 6,
   },
   successAlertText: {
-    color: '#065F46',
+    color: '#007832',
     fontSize: 11,
     fontWeight: '600',
   },

@@ -4,7 +4,6 @@ import { UserRole } from '@/data/mock-data';
 
 interface RoleHeaderProps {
   currentRole: UserRole;
-  onSelectRole: (role: UserRole) => void;
   onOpenLoginModal?: () => void;
   onLogout?: () => void;
   onGoHome?: () => void;
@@ -13,21 +12,15 @@ interface RoleHeaderProps {
 
 export const RoleHeader: React.FC<RoleHeaderProps> = ({
   currentRole,
-  onSelectRole,
   onOpenLoginModal,
   onLogout,
   onGoHome,
   userName,
 }) => {
-  const getRoleStories = () => {
-    switch (currentRole) {
-      case 'student':
-        return 'HU-01 · HU-04 · HU-05 · HU-06 · HU-09';
-      case 'company':
-        return 'HU-02 · HU-03 · HU-07';
-      case 'admin':
-        return 'HU-02 · HU-08';
-    }
+  const roleNames: Record<UserRole, string> = {
+    student: 'Estudiante',
+    company: 'Empresa',
+    admin: 'Administrador',
   };
 
   return (
@@ -40,7 +33,7 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
           style={styles.titleArea}>
           <Text style={styles.brandTitle}>UniEmpleo</Text>
           <Text style={styles.brandSubtitle}>
-            {userName || 'UNIPAZ · Barrancabermeja'}
+            {userName ? `${roleNames[currentRole]} · ${userName}` : 'UNIPAZ · Barrancabermeja'}
           </Text>
         </TouchableOpacity>
 
@@ -61,43 +54,13 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
         ) : null}
       </View>
 
-      <View style={styles.roleTabsContainer}>
-        <TouchableOpacity
-          style={[styles.roleTab, currentRole === 'student' && styles.roleTabActive]}
-          onPress={() => onSelectRole('student')}>
-          <Text style={[styles.roleTabText, currentRole === 'student' && styles.roleTabTextActive]}>
-            🎓 Estudiante
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.roleTab, currentRole === 'company' && styles.roleTabActive]}
-          onPress={() => onSelectRole('company')}>
-          <Text style={[styles.roleTabText, currentRole === 'company' && styles.roleTabTextActive]}>
-            🏢 Empresa
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.roleTab, currentRole === 'admin' && styles.roleTabActive]}
-          onPress={() => onSelectRole('admin')}>
-          <Text style={[styles.roleTabText, currentRole === 'admin' && styles.roleTabTextActive]}>
-            🛡️ Admin
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.storiesBanner}>
-        <Text style={styles.storiesLabel}>Criterios activos:</Text>
-        <Text style={styles.storiesTags}>{getRoleStories()}</Text>
-      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#0F766E', // Verde UNIPAZ elegante
+    backgroundColor: '#10235F',
     paddingTop: 12,
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -113,7 +76,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 0,
   },
   titleArea: {
     flex: 1,
@@ -126,7 +89,7 @@ const styles = StyleSheet.create({
   },
   brandSubtitle: {
     fontSize: 12,
-    color: '#CCFBF1',
+    color: '#E6F7ED',
     fontWeight: '500',
   },
   authBadge: {
@@ -138,57 +101,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.35)',
   },
   authBadgeText: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  roleTabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.22)',
-    borderRadius: 12,
-    padding: 3,
-    gap: 4,
-  },
-  roleTab: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  roleTabActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  roleTabText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#E6FFFA',
-  },
-  roleTabTextActive: {
-    color: '#0F766E',
-    fontWeight: '700',
-  },
-  storiesBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    gap: 6,
-  },
-  storiesLabel: {
-    fontSize: 11,
-    color: '#99F6E4',
-    fontWeight: '600',
-  },
-  storiesTags: {
     fontSize: 11,
     color: '#FFFFFF',
     fontWeight: '700',

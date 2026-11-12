@@ -92,7 +92,9 @@ export async function apiRequest<T>(
     const message =
       (typeof body?.message === 'string' && body.message) ||
       (typeof body?.error?.message === 'string' && body.error.message) ||
-      `La API respondió con el estado ${response.status}.`;
+      (response.status === 404
+        ? 'La ruta no fue encontrada (404). Verifica que el gateway publique las rutas /api/v1 y que la URL base sea correcta.'
+        : `La API respondió con el estado ${response.status}.`);
 
     throw new ApiError(message, response.status);
   }
@@ -110,10 +112,63 @@ export interface ApiUser {
 export interface AuthResponse {
   success: boolean;
   message?: string;
-  data?: {
-    token: string;
-    user: ApiUser;
-  };
+  data?: unknown;
+}
+
+export type AuthMethod = 'password' | 'google';
+
+export interface AuthenticatedSessionResponse {
+  token: string;
+  user: ApiUser;
+}
+
+function isApiUser(value: unknown): value is ApiUser {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const user = value as Record<string, unknown>;
+  return (
+    (typeof user.id === 'string' || typeof user.id === 'number') &&
+    typeof user.name === 'string' &&
+    typeof user.email === 'string' &&
+    (user.role === 'student' || user.role === 'company' || user.role === 'admin')
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function getAuthenticatedSession(
+  response: AuthResponse,
+  method: AuthMethod,
+): AuthenticatedSessionResponse {
+  if (!response || response.success !== true || !isRecord(response.data)) {
+    throw new ApiError(
+      typeof response?.message === 'string' && response.message
+        ? response.message
+        : 'El servidor no pudo validar las credenciales.',
+      401,
+    );
+  }
+  const token = response.data.token;
+  const rawUser = response.data.user;
+  if (typeof token !== 'string' || !token || !isRecord(rawUser)) {
+    throw new ApiError('El servidor devolvió datos de sesión incompletos o inválidos.', 502);
+  }
+  const role = rawUser.role;
+  if (role !== 'student' && role !== 'company' && role !== 'admin') {
+    throw new ApiError('El servidor devolvió un rol de cuenta no válido.', 502);
+  }
+  if (!isApiUser(rawUser)) {
+    throw new ApiError('El servidor devolvió datos de sesión incompletos o inválidos.', 502);
+  }
+  if (method === 'google' && rawUser.role !== 'student') {
+    throw new ApiError(
+      'El inicio de sesión con Google solo está disponible para estudiantes. Usa correo y contraseña para este tipo de cuenta.',
+      403,
+    );
+  }
+
+  return { token, user: rawUser };
 }
 
 export interface ApiDocument {
@@ -172,12 +227,12 @@ export interface CompanyRegistrationInput {
   password: string;
   password_confirmation: string;
   company_name: string;
-  nit: string;
-  sector?: string;
-  contact_person?: string;
-  phone?: string;
-  address?: string;
-  description?: string;
+  nit?: string;
+  sector: string;
+  contact_person: string;
+  phone: string;
+  address: string;
+  description: string;
 }
 
 export function registerCompany(
@@ -232,14 +287,158 @@ export function unwrapList<T>(response: ApiEnvelope<unknown>): T[] {
   throw new ApiError('La API devolvió una lista con formato inesperado.', 502);
 }
 
+export interface ApiListPage<T> {
+  items: T[];
+  currentPage: number;
+  perPage: number;
+  total?: number;
+  hasMore: boolean;
+}
+
+function readPageNumber(value: unknown, fallback: number, allowZero = false): number {
+  if (value === undefined || value === null) return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < (allowZero ? 0 : 1)) {
+    throw new ApiError('La API devolvió metadatos de paginación inválidos.', 502);
+  }
+  return parsed;
+}
+
+export function unwrapPage<T>(
+  response: ApiEnvelope<unknown>,
+  requestedPage = 1,
+  requestedPerPage = 12,
+): ApiListPage<T> {
+  const data = unwrapData(response);
+  if (Array.isArray(data)) {
+    return {
+      items: data as T[],
+      currentPage: requestedPage,
+      perPage: requestedPerPage,
+      hasMore: data.length >= requestedPerPage,
+    };
+  }
+
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new ApiError('La API devolvió una página con formato inesperado.', 502);
+  }
+
+  const pageData = (data as { data?: unknown }).data;
+  if (!Array.isArray(pageData)) {
+    throw new ApiError('La API devolvió una página con formato inesperado.', 502);
+  }
+
+  const pageRecord = data as {
+    meta?: unknown;
+    current_page?: unknown;
+    per_page?: unknown;
+    total?: unknown;
+  };
+  const rawMeta = pageRecord.meta ?? pageRecord;
+  if (rawMeta !== undefined && (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta))) {
+    throw new ApiError('La API devolvió metadatos de paginación inválidos.', 502);
+  }
+  const meta = (rawMeta || {}) as Record<string, unknown>;
+  const currentPage = readPageNumber(meta.current_page, requestedPage);
+  const perPage = readPageNumber(meta.per_page, requestedPerPage);
+  const total = meta.total === undefined
+    ? undefined
+    : readPageNumber(meta.total, 0, true);
+
+  return {
+    items: pageData as T[],
+    currentPage,
+    perPage,
+    total,
+    hasMore: total === undefined
+      ? pageData.length >= perPage
+      : currentPage * perPage < total,
+  };
+}
+
+export interface JobSearchFilters {
+  search?: string;
+  modality?: string;
+  location?: string;
+  page?: number;
+  perPage?: number;
+}
+
+export interface JobWriteInput {
+  title: string;
+  description: string;
+  requirements: string;
+  responsibilities: string;
+  area: string;
+  contract_type: string;
+  modality: string;
+  schedule: string | null;
+  location: string;
+  salary_range: string | null;
+  salary_negotiable: boolean;
+  positions: number;
+  deadline: string;
+  requires_cv: boolean;
+  programs_targeted: string[];
+  status?: JobOfferStatus;
+}
+
+export interface JobFormInput {
+  title: string;
+  description: string;
+  requirements: string[];
+  responsibilities: string;
+  area: string;
+  contractType: string;
+  modality: string;
+  schedule?: string;
+  location: string;
+  salaryRange?: string;
+  salaryNegotiable: boolean;
+  positions: number;
+  deadline: string;
+  requiresCv: boolean;
+  programsTargeted: string[];
+  status?: JobOfferStatus;
+}
+
+type JobOfferStatus = 'active' | 'paused' | 'closed';
+
+export function toJobWriteInput(job: JobFormInput): JobWriteInput {
+  return {
+    title: job.title.trim(),
+    description: job.description.trim(),
+    requirements: job.requirements.map((requirement) => requirement.trim()).filter(Boolean).join('\n'),
+    responsibilities: job.responsibilities.trim(),
+    area: job.area.trim(),
+    contract_type: job.contractType,
+    modality: job.modality,
+    schedule: job.schedule?.trim() || null,
+    location: job.location.trim(),
+    salary_range: job.salaryRange?.trim() || null,
+    salary_negotiable: job.salaryNegotiable,
+    positions: job.positions,
+    deadline: job.deadline,
+    requires_cv: job.requiresCv,
+    programs_targeted: job.programsTargeted.map((program) => program.trim()).filter(Boolean),
+    ...(job.status ? { status: job.status } : {}),
+  };
+}
+
 export function getJobs(
   token?: string | null,
-  filters: { search?: string; modality?: string; location?: string } = {},
+  filters: JobSearchFilters = {},
 ): Promise<ApiEnvelope<unknown>> {
   const query = new URLSearchParams();
-  if (filters.search) query.set('search', filters.search);
+  if (filters.search?.trim()) query.set('search', filters.search.trim());
   if (filters.modality) query.set('modalidad', filters.modality);
-  if (filters.location) query.set('ciudad', filters.location);
+  if (filters.location?.trim()) query.set('ciudad', filters.location.trim());
+  if (filters.page !== undefined) {
+    query.set('page', String(readPageNumber(filters.page, 1)));
+  }
+  if (filters.perPage !== undefined) {
+    query.set('per_page', String(readPageNumber(filters.perPage, 12)));
+  }
   const suffix = query.size ? `?${query.toString()}` : '';
   return apiRequest<ApiEnvelope<unknown>>(`jobs${suffix}`, { token });
 }
@@ -265,16 +464,27 @@ export function getStudentApplications(
   return apiRequest<ApiEnvelope<unknown>>('applications/student', { token });
 }
 
+export interface ApplyToJobInput {
+  cvFile?: ApiDocument;
+  coverLetter?: string;
+}
+
 export async function applyToJob(
   token: string,
   jobId: string,
-  cvFile?: ApiDocument,
+  input: ApplyToJobInput = {},
 ): Promise<ApiEnvelope<unknown>> {
-  if (cvFile) {
-    assertPdfWithinLimit(cvFile);
+  const coverLetter = input.coverLetter?.trim();
+  if (coverLetter && coverLetter.length > 2000) {
+    throw new ApiError('La carta de presentación no puede superar los 2.000 caracteres.', 422);
+  }
+
+  if (input.cvFile) {
+    assertPdfWithinLimit(input.cvFile);
     const body = new FormData();
     body.append('job_offer_id', jobId);
-    appendDocument(body, cvFile);
+    appendDocument(body, input.cvFile);
+    if (coverLetter) body.append('cover_letter', coverLetter);
     return apiRequest<ApiEnvelope<unknown>>('applications', {
       token,
       method: 'POST',
@@ -285,7 +495,10 @@ export async function applyToJob(
   return apiRequest<ApiEnvelope<unknown>>('applications', {
     token,
     method: 'POST',
-    body: { job_offer_id: jobId },
+    body: {
+      job_offer_id: jobId,
+      ...(coverLetter ? { cover_letter: coverLetter } : {}),
+    },
   });
 }
 
@@ -328,7 +541,7 @@ export function getCompanyJobs(token: string): Promise<ApiEnvelope<unknown>> {
 
 export function createJob(
   token: string,
-  job: Record<string, unknown>,
+  job: JobWriteInput,
 ): Promise<ApiEnvelope<unknown>> {
   return apiRequest<ApiEnvelope<unknown>>('jobs', {
     token,
@@ -340,7 +553,7 @@ export function createJob(
 export function updateJob(
   token: string,
   jobId: string,
-  job: Record<string, unknown>,
+  job: JobWriteInput,
 ): Promise<ApiEnvelope<unknown>> {
   return apiRequest<ApiEnvelope<unknown>>(`jobs/${encodeURIComponent(jobId)}`, {
     token,

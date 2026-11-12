@@ -7,6 +7,7 @@
     "scheme": "uniempleo",
     "userInterfaceStyle": "automatic",
     "android": {
+      "package": "com.unipaz.uniempleo",
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -17,7 +18,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF"
+          "backgroundColor": "#0D1B4C"
         }
       ],
       "expo-secure-store"

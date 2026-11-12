@@ -1,0 +1,217 @@
+{
+  "info": {
+    "name": "Bolsa de Empleo UNIPAZ - UniEmpleo API v1",
+    "description": "Colección completa para la API REST en Next.js + Prisma ORM + MySQL",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "student_token",
+      "value": ""
+    },
+    {
+      "key": "company_token",
+      "value": ""
+    },
+    {
+      "key": "admin_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login - Estudiante",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"carlos.lopez@unipaz.edu.co\",\n  \"password\": \"EstudianteUNIPAZ2024*\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login - Empresa",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"info@tecnosoluciones.edu.co\",\n  \"password\": \"EmpresaUNIPAZ2024*\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login - Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@unipaz.edu.co\",\n  \"password\": \"AdminUNIPAZ2024*\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Perfil Actual (Me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Estudiantes",
+      "item": [
+        {
+          "name": "Consultar Perfil Estudiante",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/students/profile", "host": ["{{base_url}}"], "path": ["students", "profile"] }
+          }
+        },
+        {
+          "name": "Actualizar Perfil Estudiante",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{student_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"semestre\": 8,\n  \"telefono\": \"3101234567\",\n  \"descripcion\": \"Estudiante enfocado en React Native y Node.js\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/students/profile", "host": ["{{base_url}}"], "path": ["students", "profile"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vacantes",
+      "item": [
+        {
+          "name": "Listar Vacantes Activas",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/jobs?search=react&modalidad=Híbrido", "host": ["{{base_url}}"], "path": ["jobs"] }
+          }
+        },
+        {
+          "name": "Detalle de Vacante",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/jobs/1", "host": ["{{base_url}}"], "path": ["jobs", "1"] }
+          }
+        },
+        {
+          "name": "Crear Vacante (Empresa Aprobada)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{company_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Desarrollador Fullstack Junior\",\n  \"descripcion\": \"Conocimientos en TypeScript, Next.js y bases de datos relacionales.\",\n  \"ubicacion\": \"Barrancabermeja\",\n  \"salario\": \"$ 2.500.000 COP\",\n  \"modalidad\": \"Remoto\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/jobs", "host": ["{{base_url}}"], "path": ["jobs"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Postulaciones (Sprint 3)",
+      "item": [
+        {
+          "name": "Crear Postulación (Estudiante)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{student_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_offer_id\": 2\n}"
+            },
+            "url": { "raw": "{{base_url}}/applications", "host": ["{{base_url}}"], "path": ["applications"] }
+          }
+        },
+        {
+          "name": "Consultar Mis Postulaciones (Estudiante)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{student_token}}" }],
+            "url": { "raw": "{{base_url}}/applications/student", "host": ["{{base_url}}"], "path": ["applications", "student"] }
+          }
+        },
+        {
+          "name": "Listar Postulantes de Vacante (Empresa)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{company_token}}" }],
+            "url": { "raw": "{{base_url}}/applications/job/1", "host": ["{{base_url}}"], "path": ["applications", "job", "1"] }
+          }
+        },
+        {
+          "name": "Actualizar Estado Candidato (Empresa)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{company_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"interview\",\n  \"company_notes\": \"Excelente perfil técnico en React Native. Convocado a entrevista.\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/applications/1/status", "host": ["{{base_url}}"], "path": ["applications", "1", "status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Administración",
+      "item": [
+        {
+          "name": "Listar Empresas Pendientes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": { "raw": "{{base_url}}/admin/companies/pending", "host": ["{{base_url}}"], "path": ["admin", "companies", "pending"] }
+          }
+        },
+        {
+          "name": "Aprobar Empresa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"aprobada\": true\n}"
+            },
+            "url": { "raw": "{{base_url}}/admin/companies/2/approve", "host": ["{{base_url}}"], "path": ["admin", "companies", "2", "approve"] }
+          }
+        }
+      ]
+    }
+  ]
+}

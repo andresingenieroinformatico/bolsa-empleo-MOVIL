@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import * as DocumentPicker from 'expo-document-picker';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,15 +9,18 @@ import {
   View,
 } from 'react-native';
 import { StudentProfile } from '@/data/mock-data';
+import { ApiDocument } from '@/services/api';
 
 interface PerfilViewProps {
   student: StudentProfile;
-  onUpdateStudent: (updated: StudentProfile) => void;
+  onUpdateStudent: (updated: StudentProfile) => Promise<void>;
+  onUploadCv: (file: ApiDocument) => Promise<StudentProfile>;
 }
 
 export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   student,
   onUpdateStudent,
+  onUploadCv,
 }) => {
   const [phone, setPhone] = useState(student.phone);
   const [semester, setSemester] = useState(String(student.semester));
@@ -26,8 +29,11 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   const [cvFile, setCvFile] = useState(student.cvFile);
 
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
   const [cvSuccess, setCvSuccess] = useState<string | null>(null);
+  const [isUploadingCv, setIsUploadingCv] = useState(false);
 
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   const timeSlots = ['Mañana', 'Tarde', 'Noche'];
@@ -46,7 +52,9 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
     setAvailability(newAvailability);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
+    setSaveMessage(null);
+    setSaveError(null);
     const updatedStudent: StudentProfile = {
       ...student,
       phone,
@@ -55,28 +63,53 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
       availability,
       cvFile,
     };
-    onUpdateStudent(updatedStudent);
-    setSaveMessage('¡Datos de perfil y disponibilidad actualizados con éxito!');
-    setTimeout(() => setSaveMessage(null), 2500);
+    setIsSaving(true);
+    try {
+      await onUpdateStudent(updatedStudent);
+      setSaveMessage('Perfil actualizado correctamente.');
+      setTimeout(() => setSaveMessage(null), 2500);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'No fue posible guardar el perfil.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // Criterios HU-09 Escenario 3 y 4: Subida/Reemplazo de CV
-  const handleUploadValidCv = () => {
+  const handleUploadCv = async () => {
     setCvError(null);
-    const newCv = {
-      name: 'CV_Actualizado_UNIPAZ_2026.pdf',
-      sizeMb: 2.3,
-      uploadDate: new Date().toISOString().split('T')[0],
-    };
-    setCvFile(newCv);
-    setCvSuccess('Hoja de vida actualizada exitosamente (2.3 MB). Se usará en futuras postulaciones.');
-    setTimeout(() => setCvSuccess(null), 3000);
-  };
-
-  // Criterio HU-09 Escenario 5: Excede límite de tamaño (> 5MB)
-  const handleUploadExceedsLimit = () => {
     setCvSuccess(null);
-    setCvError('Error: El archivo seleccionado (7.4 MB) excede el tamaño máximo permitido de 5.0 MB. Por favor comprímelo o selecciona otro archivo.');
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const file = result.assets[0];
+      if (!file.name.toLowerCase().endsWith('.pdf') && file.mimeType !== 'application/pdf') {
+        setCvError('El archivo seleccionado no es un PDF.');
+        return;
+      }
+      if (file.size !== undefined && file.size > 5 * 1024 * 1024) {
+        setCvError('El archivo supera el tamaño máximo permitido de 5 MB.');
+        return;
+      }
+
+      setIsUploadingCv(true);
+      const updated = await onUploadCv({
+        uri: file.uri,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        file: file.file,
+      });
+      setCvFile(updated.cvFile);
+      setCvSuccess('Hoja de vida subida correctamente.');
+      setTimeout(() => setCvSuccess(null), 3000);
+    } catch (error) {
+      setCvError(error instanceof Error ? error.message : 'No fue posible subir la hoja de vida.');
+    } finally {
+      setIsUploadingCv(false);
+    }
   };
 
   return (
@@ -141,43 +174,45 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
           Toca cada casilla para indicar los turnos en que puedes trabajar sin cruzar con tus clases
         </Text>
 
-        <View style={styles.matrixContainer}>
-          <View style={styles.matrixHeaderRow}>
-            <Text style={[styles.matrixHeaderCell, { flex: 1.2 }]}>Día</Text>
-            <Text style={styles.matrixHeaderCell}>Mañana{'\n'}(8-12)</Text>
-            <Text style={styles.matrixHeaderCell}>Tarde{'\n'}(2-6)</Text>
-            <Text style={styles.matrixHeaderCell}>Noche{'\n'}(6-10)</Text>
-          </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.matrixContainer}>
+            <View style={styles.matrixHeaderRow}>
+              <Text style={[styles.matrixHeaderCell, { flex: 1.2 }]}>Día</Text>
+              <Text style={styles.matrixHeaderCell}>Mañana{'\n'}(8-12)</Text>
+              <Text style={styles.matrixHeaderCell}>Tarde{'\n'}(2-6)</Text>
+              <Text style={styles.matrixHeaderCell}>Noche{'\n'}(6-10)</Text>
+            </View>
 
-          {daysOfWeek.map((day) => {
-            const daySlots = availability[day] || [];
-            return (
-              <View key={day} style={styles.matrixRow}>
-                <Text style={[styles.matrixDayCell, { flex: 1.2 }]}>{day}</Text>
-                {timeSlots.map((slot) => {
-                  const isSelected = daySlots.includes(slot);
-                  return (
-                    <TouchableOpacity
-                      key={slot}
-                      style={[
-                        styles.matrixSlotBtn,
-                        isSelected && styles.matrixSlotBtnActive,
-                      ]}
-                      onPress={() => toggleSlot(day, slot)}>
-                      <Text
+            {daysOfWeek.map((day) => {
+              const daySlots = availability[day] || [];
+              return (
+                <View key={day} style={styles.matrixRow}>
+                  <Text style={[styles.matrixDayCell, { flex: 1.2 }]}>{day}</Text>
+                  {timeSlots.map((slot) => {
+                    const isSelected = daySlots.includes(slot);
+                    return (
+                      <TouchableOpacity
+                        key={slot}
                         style={[
-                          styles.matrixSlotText,
-                          isSelected && styles.matrixSlotTextActive,
-                        ]}>
-                        {isSelected ? '✓' : '—'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            );
-          })}
-        </View>
+                          styles.matrixSlotBtn,
+                          isSelected && styles.matrixSlotBtnActive,
+                        ]}
+                        onPress={() => toggleSlot(day, slot)}>
+                        <Text
+                          style={[
+                            styles.matrixSlotText,
+                            isSelected && styles.matrixSlotTextActive,
+                          ]}>
+                          {isSelected ? '✓' : '—'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
       </View>
 
       {/* Gestión de Hoja de Vida (HU-09 Escenarios 3, 4 y 5) */}
@@ -196,7 +231,8 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
             <View style={{ flex: 1 }}>
               <Text style={styles.cvFileName}>{cvFile.name}</Text>
               <Text style={styles.cvFileSize}>
-                Tamaño: {cvFile.sizeMb} MB · Subido el {cvFile.uploadDate}
+                Tamaño: {cvFile.sizeMb === undefined ? 'No disponible' : `${cvFile.sizeMb} MB`}
+                {cvFile.uploadDate ? ` · Subido el ${cvFile.uploadDate}` : ''}
               </Text>
             </View>
           </View>
@@ -206,20 +242,15 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
           </View>
         )}
 
-        {/* Acciones de prueba para CV */}
-        <View style={styles.cvActionsRow}>
-          <TouchableOpacity
-            style={styles.cvActionBtn}
-            onPress={handleUploadValidCv}>
-            <Text style={styles.cvActionText}>📎 Subir / Actualizar CV (2.3 MB)</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.cvActionBtn, styles.cvActionErrorBtn]}
-            onPress={handleUploadExceedsLimit}>
-            <Text style={styles.cvActionErrorText}>⚠️ Simular archivo &gt; 5MB</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          accessibilityRole="button"
+          disabled={isUploadingCv}
+          style={[styles.cvActionBtn, isUploadingCv && styles.disabledButton]}
+          onPress={() => void handleUploadCv()}>
+          <Text style={styles.cvActionText}>
+            {isUploadingCv ? 'Subiendo hoja de vida…' : 'Seleccionar y subir PDF'}
+          </Text>
+        </TouchableOpacity>
 
         {cvError && (
           <View style={styles.errorAlert}>
@@ -239,13 +270,21 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
           <Text style={styles.saveAlertText}>✅ {saveMessage}</Text>
         </View>
       )}
+      {saveError && (
+        <View style={styles.errorAlert}>
+          <Text style={styles.errorAlertText}>{saveError}</Text>
+        </View>
+      )}
 
       {/* Botón Guardar Perfil */}
       <TouchableOpacity
         style={styles.saveProfileBtn}
+        disabled={isSaving}
         activeOpacity={0.85}
-        onPress={handleSaveProfile}>
-        <Text style={styles.saveProfileBtnText}>Guardar Perfil y Disponibilidad</Text>
+        onPress={() => void handleSaveProfile()}>
+        <Text style={styles.saveProfileBtnText}>
+          {isSaving ? 'Guardando…' : 'Guardar perfil y disponibilidad'}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -254,9 +293,15 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    backgroundColor: '#F4F5F7',
   },
   content: {
+    width: '100%',
+    maxWidth: 800,
+    alignSelf: 'center',
     padding: 16,
     paddingBottom: 40,
     gap: 14,
@@ -273,7 +318,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#0F766E',
+    backgroundColor: '#00963F',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -286,7 +331,7 @@ const styles = StyleSheet.create({
   studentName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#111827',
+    color: '#1A1F36',
   },
   studentEmail: {
     fontSize: 13,
@@ -296,23 +341,23 @@ const styles = StyleSheet.create({
   googleVerifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#E6F7ED',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     marginTop: 8,
     gap: 6,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#34D399',
   },
   googleIcon: {
-    color: '#059669',
+    color: '#00963F',
     fontWeight: '900',
     fontSize: 11,
   },
   googleVerifiedText: {
     fontSize: 11,
-    color: '#065F46',
+    color: '#007832',
     fontWeight: '600',
   },
   sectionCard: {
@@ -331,13 +376,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1A1F36',
   },
   tag: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#0F766E',
-    backgroundColor: '#CCFBF1',
+    color: '#00963F',
+    backgroundColor: '#E6F7ED',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -358,20 +403,21 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: '#6B7280',
     marginBottom: 4,
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F4F5F7',
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 13,
-    color: '#111827',
+    color: '#1A1F36',
   },
   matrixContainer: {
+    minWidth: 480,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 10,
@@ -379,7 +425,7 @@ const styles = StyleSheet.create({
   },
   matrixHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F4F5F7',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     paddingVertical: 8,
@@ -389,19 +435,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     fontWeight: '700',
-    color: '#4B5563',
+    color: '#6B7280',
   },
   matrixRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#F4F5F7',
     alignItems: 'center',
     paddingVertical: 4,
   },
   matrixDayCell: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#374151',
+    color: '#6B7280',
     paddingLeft: 10,
   },
   matrixSlotBtn: {
@@ -409,11 +455,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginHorizontal: 4,
     borderRadius: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F4F5F7',
     alignItems: 'center',
   },
   matrixSlotBtnActive: {
-    backgroundColor: '#0F766E',
+    backgroundColor: '#00963F',
   },
   matrixSlotText: {
     fontSize: 12,
@@ -426,9 +472,9 @@ const styles = StyleSheet.create({
   cvInfoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDFA',
+    backgroundColor: '#E6F7ED',
     borderWidth: 1,
-    borderColor: '#99F6E4',
+    borderColor: '#34D399',
     padding: 12,
     borderRadius: 10,
     marginBottom: 10,
@@ -440,7 +486,7 @@ const styles = StyleSheet.create({
   cvFileName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F766E',
+    color: '#00963F',
   },
   cvFileSize: {
     fontSize: 11,
@@ -449,7 +495,7 @@ const styles = StyleSheet.create({
   },
   noCvNotice: {
     padding: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F4F5F7',
     borderRadius: 8,
     marginBottom: 10,
   },
@@ -463,7 +509,7 @@ const styles = StyleSheet.create({
   },
   cvActionBtn: {
     flex: 1,
-    backgroundColor: '#0F766E',
+    backgroundColor: '#00963F',
     paddingVertical: 9,
     borderRadius: 8,
     alignItems: 'center',
@@ -472,6 +518,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   cvActionErrorBtn: {
     backgroundColor: '#FEE2E2',
@@ -496,30 +545,30 @@ const styles = StyleSheet.create({
   },
   successAlert: {
     marginTop: 8,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#E6F7ED',
     padding: 8,
     borderRadius: 8,
   },
   successAlertText: {
-    color: '#065F46',
+    color: '#007832',
     fontSize: 11,
     fontWeight: '600',
   },
   saveAlert: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#E6F7ED',
     padding: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#34D399',
     alignItems: 'center',
   },
   saveAlertText: {
-    color: '#065F46',
+    color: '#007832',
     fontSize: 12,
     fontWeight: '700',
   },
   saveProfileBtn: {
-    backgroundColor: '#0F766E',
+    backgroundColor: '#00963F',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',

@@ -1,7 +1,12 @@
 export type UserRole = 'student' | 'company' | 'admin';
 
-export type JobModality = 'Presencial' | 'Remoto' | 'Híbrido';
-export type ContractType = 'Medio tiempo' | 'Por horas' | 'Prácticas' | 'Tiempo completo';
+export type JobModality = 'Presencial' | 'Remoto' | 'Híbrido' | 'No especificada';
+export type ContractType =
+  | 'Medio tiempo'
+  | 'Por horas'
+  | 'Prácticas'
+  | 'Tiempo completo'
+  | 'No especificado';
 
 export type ApplicationStatus = 'pending' | 'reviewed' | 'interview' | 'accepted' | 'rejected';
 export type CompanyStatus = 'pending' | 'approved' | 'rejected' | 'inactive';
@@ -19,8 +24,8 @@ export interface StudentProfile {
   };
   cvFile?: {
     name: string;
-    sizeMb: number;
-    uploadDate: string;
+    sizeMb?: number;
+    uploadDate?: string;
   };
 }
 
@@ -43,10 +48,14 @@ export interface JobOffer {
   title: string;
   description: string;
   requirements: string[];
+  responsibilities?: string;
   area: string;
   program: string;
   modality: JobModality;
   contractType: ContractType;
+  schedule?: string;
+  salaryRange?: string;
+  salaryNegotiable?: boolean;
   deadline: string;
   location: string;
   status: 'active' | 'paused' | 'closed';

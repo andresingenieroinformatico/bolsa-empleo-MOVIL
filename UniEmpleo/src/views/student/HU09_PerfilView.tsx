@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import * as DocumentPicker from 'expo-document-picker';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,15 +9,18 @@ import {
   View,
 } from 'react-native';
 import { StudentProfile } from '@/data/mock-data';
+import { ApiDocument } from '@/services/api';
 
 interface PerfilViewProps {
   student: StudentProfile;
-  onUpdateStudent: (updated: StudentProfile) => void;
+  onUpdateStudent: (updated: StudentProfile) => Promise<void>;
+  onUploadCv: (file: ApiDocument) => Promise<StudentProfile>;
 }
 
 export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   student,
   onUpdateStudent,
+  onUploadCv,
 }) => {
   const [phone, setPhone] = useState(student.phone);
   const [semester, setSemester] = useState(String(student.semester));
@@ -26,8 +29,11 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   const [cvFile, setCvFile] = useState(student.cvFile);
 
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
   const [cvSuccess, setCvSuccess] = useState<string | null>(null);
+  const [isUploadingCv, setIsUploadingCv] = useState(false);
 
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   const timeSlots = ['Mañana', 'Tarde', 'Noche'];
@@ -46,7 +52,9 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
     setAvailability(newAvailability);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
+    setSaveMessage(null);
+    setSaveError(null);
     const updatedStudent: StudentProfile = {
       ...student,
       phone,
@@ -55,28 +63,53 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
       availability,
       cvFile,
     };
-    onUpdateStudent(updatedStudent);
-    setSaveMessage('¡Datos de perfil y disponibilidad actualizados con éxito!');
-    setTimeout(() => setSaveMessage(null), 2500);
+    setIsSaving(true);
+    try {
+      await onUpdateStudent(updatedStudent);
+      setSaveMessage('Perfil actualizado correctamente.');
+      setTimeout(() => setSaveMessage(null), 2500);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'No fue posible guardar el perfil.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // Criterios HU-09 Escenario 3 y 4: Subida/Reemplazo de CV
-  const handleUploadValidCv = () => {
+  const handleUploadCv = async () => {
     setCvError(null);
-    const newCv = {
-      name: 'CV_Actualizado_UNIPAZ_2026.pdf',
-      sizeMb: 2.3,
-      uploadDate: new Date().toISOString().split('T')[0],
-    };
-    setCvFile(newCv);
-    setCvSuccess('Hoja de vida actualizada exitosamente (2.3 MB). Se usará en futuras postulaciones.');
-    setTimeout(() => setCvSuccess(null), 3000);
-  };
-
-  // Criterio HU-09 Escenario 5: Excede límite de tamaño (> 5MB)
-  const handleUploadExceedsLimit = () => {
     setCvSuccess(null);
-    setCvError('Error: El archivo seleccionado (7.4 MB) excede el tamaño máximo permitido de 5.0 MB. Por favor comprímelo o selecciona otro archivo.');
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const file = result.assets[0];
+      if (!file.name.toLowerCase().endsWith('.pdf') && file.mimeType !== 'application/pdf') {
+        setCvError('El archivo seleccionado no es un PDF.');
+        return;
+      }
+      if (file.size !== undefined && file.size > 5 * 1024 * 1024) {
+        setCvError('El archivo supera el tamaño máximo permitido de 5 MB.');
+        return;
+      }
+
+      setIsUploadingCv(true);
+      const updated = await onUploadCv({
+        uri: file.uri,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        file: file.file,
+      });
+      setCvFile(updated.cvFile);
+      setCvSuccess('Hoja de vida subida correctamente.');
+      setTimeout(() => setCvSuccess(null), 3000);
+    } catch (error) {
+      setCvError(error instanceof Error ? error.message : 'No fue posible subir la hoja de vida.');
+    } finally {
+      setIsUploadingCv(false);
+    }
   };
 
   return (
@@ -196,7 +229,8 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
             <View style={{ flex: 1 }}>
               <Text style={styles.cvFileName}>{cvFile.name}</Text>
               <Text style={styles.cvFileSize}>
-                Tamaño: {cvFile.sizeMb} MB · Subido el {cvFile.uploadDate}
+                Tamaño: {cvFile.sizeMb === undefined ? 'No disponible' : `${cvFile.sizeMb} MB`}
+                {cvFile.uploadDate ? ` · Subido el ${cvFile.uploadDate}` : ''}
               </Text>
             </View>
           </View>
@@ -206,20 +240,15 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
           </View>
         )}
 
-        {/* Acciones de prueba para CV */}
-        <View style={styles.cvActionsRow}>
-          <TouchableOpacity
-            style={styles.cvActionBtn}
-            onPress={handleUploadValidCv}>
-            <Text style={styles.cvActionText}>📎 Subir / Actualizar CV (2.3 MB)</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.cvActionBtn, styles.cvActionErrorBtn]}
-            onPress={handleUploadExceedsLimit}>
-            <Text style={styles.cvActionErrorText}>⚠️ Simular archivo &gt; 5MB</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          accessibilityRole="button"
+          disabled={isUploadingCv}
+          style={[styles.cvActionBtn, isUploadingCv && styles.disabledButton]}
+          onPress={() => void handleUploadCv()}>
+          <Text style={styles.cvActionText}>
+            {isUploadingCv ? 'Subiendo hoja de vida…' : 'Seleccionar y subir PDF'}
+          </Text>
+        </TouchableOpacity>
 
         {cvError && (
           <View style={styles.errorAlert}>
@@ -239,13 +268,21 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
           <Text style={styles.saveAlertText}>✅ {saveMessage}</Text>
         </View>
       )}
+      {saveError && (
+        <View style={styles.errorAlert}>
+          <Text style={styles.errorAlertText}>{saveError}</Text>
+        </View>
+      )}
 
       {/* Botón Guardar Perfil */}
       <TouchableOpacity
         style={styles.saveProfileBtn}
+        disabled={isSaving}
         activeOpacity={0.85}
-        onPress={handleSaveProfile}>
-        <Text style={styles.saveProfileBtnText}>Guardar Perfil y Disponibilidad</Text>
+        onPress={() => void handleSaveProfile()}>
+        <Text style={styles.saveProfileBtnText}>
+          {isSaving ? 'Guardando…' : 'Guardar perfil y disponibilidad'}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -472,6 +509,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   cvActionErrorBtn: {
     backgroundColor: '#FEE2E2',

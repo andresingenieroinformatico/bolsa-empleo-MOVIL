@@ -10,11 +10,12 @@ import {
 } from 'react-native';
 import { StatusBadge } from '@/components/StatusBadge';
 import { CompanyProfile } from '@/data/mock-data';
+import { CompanyRegistrationInput } from '@/services/api';
 
 interface PerfilEmpresaViewProps {
   company: CompanyProfile;
   allCompanies: CompanyProfile[];
-  onRegisterCompany: (newCompany: CompanyProfile) => void;
+  onRegisterCompany: (input: CompanyRegistrationInput) => Promise<void>;
   onUpdateCompany: (updated: CompanyProfile) => void;
 }
 
@@ -34,13 +35,13 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
 
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
 
-  // Criterio HU-02 Escenarios 1 y 2
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setRegisterError(null);
     setRegisterSuccess(null);
 
-    if (!regName.trim() || !regEmail.trim() || !regPassword.trim()) {
+    if (!regName.trim() || !regEmail.trim() || !regNit.trim() || !regPassword.trim()) {
       setRegisterError('Por favor completa los campos obligatorios (Nombre, Email, Contraseña).');
       return;
     }
@@ -55,28 +56,35 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
       return;
     }
 
-    const newCompany: CompanyProfile = {
-      id: `comp-${Date.now()}`,
-      name: regName.trim(),
-      email: regEmail.trim(),
-      nit: regNit.trim() || 'Pendiente por adjuntar',
-      sector: regSector.trim() || 'Servicios Generales',
-      description: regDesc.trim() || 'Empresa registrada en UniEmpleo.',
-      status: 'pending', // Escenario 1: se crea en pending
-    };
+    setIsRegistering(true);
+    try {
+      await onRegisterCompany({
+        name: regName.trim(),
+        email: regEmail.trim().toLowerCase(),
+        password: regPassword,
+        password_confirmation: regPassword,
+        company_name: regName.trim(),
+        nit: regNit.trim(),
+        sector: regSector.trim() || undefined,
+        description: regDesc.trim() || undefined,
+      });
+      setRegisterSuccess('Solicitud enviada. La empresa quedó pendiente de aprobación institucional.');
+      setTimeout(() => {
+        setShowRegisterModal(false);
+        setRegisterSuccess(null);
+        setRegName('');
+        setRegEmail('');
+        setRegNit('');
+        setRegSector('');
+        setRegDesc('');
+        setRegPassword('');
+      }, 1800);
+    } catch (error) {
+      setRegisterError(error instanceof Error ? error.message : 'No fue posible registrar la empresa.');
+    } finally {
+      setIsRegistering(false);
+    }
 
-    onRegisterCompany(newCompany);
-    setRegisterSuccess('¡Empresa registrada exitosamente! Tu cuenta quedó en estado "pending" en espera de aprobación por UNIPAZ.');
-    setTimeout(() => {
-      setShowRegisterModal(false);
-      setRegisterSuccess(null);
-      setRegName('');
-      setRegEmail('');
-      setRegNit('');
-      setRegSector('');
-      setRegDesc('');
-      setRegPassword('');
-    }, 1800);
   };
 
   return (
@@ -240,8 +248,13 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
               </View>
             )}
 
-            <TouchableOpacity style={styles.submitBtn} onPress={handleRegister}>
-              <Text style={styles.submitBtnText}>Enviar Solicitud de Registro</Text>
+            <TouchableOpacity
+              style={[styles.submitBtn, isRegistering && styles.disabledButton]}
+              disabled={isRegistering}
+              onPress={() => void handleRegister()}>
+              <Text style={styles.submitBtnText}>
+                {isRegistering ? 'Enviando…' : 'Enviar solicitud de registro'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -456,6 +469,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 13,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   errorBox: {
     backgroundColor: '#FEF2F2',

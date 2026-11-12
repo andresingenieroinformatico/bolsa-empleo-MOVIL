@@ -16,6 +16,23 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Backend connection
+
+The mobile app calls the Next.js API gateway using `EXPO_PUBLIC_API_URL`. Copy
+`.env.example` to `.env` and set that variable to the gateway URL ending in
+`/api/v1`. Do not put Laravel secrets or private OAuth keys in Expo variables:
+`EXPO_PUBLIC_*` values are included in the client bundle.
+
+For Google sign-in, configure the Android, iOS, and web OAuth client IDs in the
+matching `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` variables. Google OAuth requires an
+Expo development build; Expo Go cannot complete the configured redirect flow.
+
+For a local gateway on a physical phone, use the computer's LAN IP instead of
+`localhost`. For an Android emulator, use `http://10.0.2.2:3000/api/v1`.
+
+The admin KPIs and user-management panel remain demonstration data because the
+API currently has no corresponding endpoints.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

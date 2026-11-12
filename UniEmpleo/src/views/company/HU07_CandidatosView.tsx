@@ -21,7 +21,7 @@ interface CandidatosViewProps {
     newStatus: ApplicationStatus,
     companyNotes?: string,
     interviewNote?: string
-  ) => void;
+  ) => Promise<void>;
 }
 
 export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
@@ -40,6 +40,8 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
   const [interviewNote, setInterviewNote] = useState('');
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
   const [statusUpdatedSuccess, setStatusUpdatedSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
 
   // Filtrar postulaciones por la vacante seleccionada
   const jobApplications = applications.filter((app) => app.jobId === selectedJobId);
@@ -54,29 +56,33 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
     setStatusUpdatedSuccess(null);
   };
 
-  const handleSaveStatus = () => {
+  const handleSaveStatus = async () => {
     if (!activeApplication) return;
-
-    onUpdateApplicationStatus(
-      activeApplication.id,
-      newStatus,
-      companyNotes.trim(),
-      newStatus === 'interview' ? interviewNote.trim() : undefined
-    );
-
-    setStatusUpdatedSuccess(`¡Estado actualizado a "${newStatus}"! Notificación enviada al estudiante.`);
-    setTimeout(() => {
-      setActiveApplication(null);
-      setStatusUpdatedSuccess(null);
-    }, 1200);
+    setActionError(null);
+    setIsSavingStatus(true);
+    try {
+      await onUpdateApplicationStatus(
+        activeApplication.id,
+        newStatus,
+        companyNotes.trim(),
+        newStatus === 'interview' ? interviewNote.trim() : undefined,
+      );
+      setStatusUpdatedSuccess(`El estado se actualizó a "${newStatus}".`);
+      setTimeout(() => {
+        setActiveApplication(null);
+        setStatusUpdatedSuccess(null);
+      }, 900);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'No fue posible actualizar la postulación.');
+    } finally {
+      setIsSavingStatus(false);
+    }
   };
 
   // Criterio HU-07 Escenario 2: Descarga de CV por ruta autenticada
   const handleDownloadCv = () => {
-    setDownloadSuccess(
-      '🔒 Hoja de vida descargada mediante token seguro de sesión (API /api/resumes/stream?auth=bearer). Acceso directo bloqueado.'
-    );
-    setTimeout(() => setDownloadSuccess(null), 3500);
+    setDownloadSuccess('El API actual no expone una ruta documentada para descargar la hoja de vida de candidatos.');
+    setTimeout(() => setDownloadSuccess(null), 4500);
   };
 
   return (
@@ -288,8 +294,19 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.saveActionBtn} onPress={handleSaveStatus}>
-                  <Text style={styles.saveActionText}>Guardar Evaluación y Notificar</Text>
+                {actionError && (
+                  <View style={styles.downloadAlert}>
+                    <Text style={styles.downloadAlertText}>{actionError}</Text>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.saveActionBtn, isSavingStatus && styles.disabledButton]}
+                  disabled={isSavingStatus}
+                  onPress={() => void handleSaveStatus()}>
+                  <Text style={styles.saveActionText}>
+                    {isSavingStatus ? 'Guardando…' : 'Guardar evaluación'}
+                  </Text>
                 </TouchableOpacity>
               </>
             )}
@@ -607,5 +624,8 @@ const styles = StyleSheet.create({
     color: '#065F46',
     fontSize: 11,
     fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

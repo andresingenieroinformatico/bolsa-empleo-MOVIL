@@ -21,9 +21,9 @@ import {
 interface MisVacantesViewProps {
   company: CompanyProfile;
   jobs: JobOffer[];
-  onAddJob: (newJob: JobOffer) => void;
-  onUpdateJob: (updatedJob: JobOffer) => void;
-  onToggleJobStatus: (jobId: string) => void;
+  onAddJob: (newJob: JobOffer) => Promise<void>;
+  onUpdateJob: (updatedJob: JobOffer) => Promise<void>;
+  onToggleJobStatus: (jobId: string) => Promise<void>;
 }
 
 export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
@@ -46,6 +46,9 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
   const [location, setLocation] = useState('Barrancabermeja');
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
 
   // Filtrar solo las vacantes de esta empresa
   const companyJobs = jobs.filter((j) => j.companyId === company.id);
@@ -89,7 +92,7 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
     setShowFormModal(true);
   };
 
-  const handleSaveJob = () => {
+  const handleSaveJob = async () => {
     if (!title.trim() || !description.trim()) {
       setFormError('El título y la descripción son obligatorios.');
       return;
@@ -100,6 +103,8 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
       .map((r) => r.trim())
       .filter((r) => r.length > 0);
 
+    setIsSaving(true);
+    try {
     if (editingJob) {
       // Criterio HU-03 Escenario 3: Edición de vacante
       const updated: JobOffer = {
@@ -113,7 +118,7 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
         deadline,
         location,
       };
-      onUpdateJob(updated);
+      await onUpdateJob(updated);
     } else {
       // Criterio HU-03 Escenario 1: Creación de vacante activa
       const newJob: JobOffer = {
@@ -133,10 +138,27 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
         vacanciesCount: 1,
         requiresCv: true,
       };
-      onAddJob(newJob);
+      await onAddJob(newJob);
     }
 
     setShowFormModal(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'No fue posible guardar la vacante.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleJob = async (jobId: string) => {
+    setActionError(null);
+    setUpdatingJobId(jobId);
+    try {
+      await onToggleJobStatus(jobId);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'No fue posible cambiar el estado.');
+    } finally {
+      setUpdatingJobId(null);
+    }
   };
 
   return (
@@ -148,6 +170,7 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
             {companyJobs.length} ofertas registradas para estudiantes UNIPAZ
           </Text>
         </View>
+        {actionError && <Text style={styles.actionError}>{actionError}</Text>}
 
         <TouchableOpacity
           style={styles.newJobBtn}
@@ -192,9 +215,12 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
               <View style={styles.actionButtonsRow}>
                 <TouchableOpacity
                   style={styles.toggleBtn}
-                  onPress={() => onToggleJobStatus(item.id)}>
+                  disabled={updatingJobId === item.id}
+                  onPress={() => void handleToggleJob(item.id)}>
                   <Text style={styles.toggleBtnText}>
-                    {item.status === 'active' ? '⏸️ Pausar' : '▶️ Activar'}
+                    {updatingJobId === item.id
+                      ? 'Actualizando…'
+                      : item.status === 'active' ? 'Pausar' : 'Activar'}
                   </Text>
                 </TouchableOpacity>
 
@@ -235,7 +261,7 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
               <View style={styles.deniedBox}>
                 <Text style={styles.deniedTitle}>🚫 Publicación Bloqueada</Text>
                 <Text style={styles.deniedText}>
-                  Tu empresa se encuentra en estado "{company.status}". Para garantizar la formalidad a los estudiantes de UNIPAZ, el administrador debe aprobar tu cuenta primero.
+                  Tu empresa se encuentra en estado &quot;{company.status}&quot;. Para garantizar la formalidad a los estudiantes de UNIPAZ, el administrador debe aprobar tu cuenta primero.
                 </Text>
                 <TouchableOpacity
                   style={styles.closeDeniedBtn}
@@ -322,9 +348,12 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.saveBtn} onPress={handleSaveJob}>
+                <TouchableOpacity
+                  style={[styles.saveBtn, isSaving && styles.disabledButton]}
+                  disabled={isSaving}
+                  onPress={() => void handleSaveJob()}>
                   <Text style={styles.saveBtnText}>
-                    {editingJob ? 'Guardar Cambios' : 'Publicar Vacante'}
+                    {isSaving ? 'Guardando…' : editingJob ? 'Guardar cambios' : 'Publicar vacante'}
                   </Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -514,6 +543,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 13,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  actionError: {
+    color: '#991B1B',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 11,
   },
   errorBox: {
     backgroundColor: '#FEF2F2',

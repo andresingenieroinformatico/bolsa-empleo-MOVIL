@@ -13,6 +13,7 @@ export async function PUT(
       return forwardToLaravel(request, {
         path: `/api/v1/admin/companies/${params.id}/reject`,
         method: "POST",
+        body: { reason: body.reason },
       });
     }
 

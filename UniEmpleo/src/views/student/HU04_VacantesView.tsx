@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   FlatList,
   Modal,
@@ -13,16 +14,16 @@ import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
 import {
   Application,
-  JobModality,
   JobOffer,
   StudentProfile,
 } from '@/data/mock-data';
+import { ApiDocument } from '@/services/api';
 
 interface VacantesViewProps {
   jobs: JobOffer[];
   student: StudentProfile;
   applications: Application[];
-  onApply: (job: JobOffer, useProfileCv: boolean, customFileName?: string) => void;
+  onApply: (job: JobOffer, useProfileCv: boolean, customFile?: ApiDocument) => Promise<void>;
 }
 
 export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
@@ -40,9 +41,10 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
   const [selectedJob, setSelectedJob] = useState<JobOffer | null>(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [useProfileCv, setUseProfileCv] = useState(true);
-  const [uploadedCvName, setUploadedCvName] = useState<string | null>(null);
+  const [uploadedCv, setUploadedCv] = useState<ApiDocument | null>(null);
   const [applyError, setApplyError] = useState<string | null>(null);
   const [applySuccess, setApplySuccess] = useState<string | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
 
   const modalities = ['Todas', 'Remoto', 'Presencial', 'Híbrido'];
   const programs = [
@@ -89,10 +91,10 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
     setApplyError(null);
     setApplySuccess(null);
     setUseProfileCv(true);
-    setUploadedCvName(null);
+    setUploadedCv(null);
   };
 
-  const handleConfirmApply = () => {
+  const handleConfirmApply = async () => {
     if (!selectedJob) return;
 
     // Criterio HU-05 Escenario 3: Verificación de postulación duplicada
@@ -101,28 +103,60 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
       return;
     }
 
-    if (selectedJob.requiresCv && !useProfileCv && !uploadedCvName) {
+    if (selectedJob.requiresCv && useProfileCv && !student.cvFile) {
+      setApplyError('Primero sube una hoja de vida PDF desde la sección Mi perfil.');
+      return;
+    }
+
+    if (selectedJob.requiresCv && !useProfileCv && !uploadedCv) {
       setApplyError('Esta vacante requiere hoja de vida. Selecciona el CV de tu perfil o adjunta un archivo.');
       return;
     }
 
-    onApply(selectedJob, useProfileCv, uploadedCvName || undefined);
-    setApplySuccess('¡Tu postulación ha sido registrada con éxito en estado pendiente!');
-    setTimeout(() => {
-      setShowApplyModal(false);
-      setSelectedJob(null);
-    }, 1200);
-  };
-
-  const handleSimulateLargeFile = () => {
-    // Criterio HU-09 Escenario 5: Tamaño de archivo mayor al límite (> 5MB)
-    setApplyError('Error: El archivo seleccionado (6.2 MB) supera el límite máximo permitido de 5 MB.');
-  };
-
-  const handleSimulateValidFile = () => {
+    setIsApplying(true);
     setApplyError(null);
-    setUploadedCvName('CV_Actualizado_Carlos_2026.pdf');
-    setUseProfileCv(false);
+    try {
+      await onApply(selectedJob, useProfileCv, uploadedCv || undefined);
+      setApplySuccess('Tu postulación fue recibida por el servidor.');
+      setTimeout(() => {
+        setShowApplyModal(false);
+        setSelectedJob(null);
+      }, 900);
+    } catch (error) {
+      setApplyError(error instanceof Error ? error.message : 'No fue posible enviar la postulación.');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const handleChooseCv = async () => {
+    setApplyError(null);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const file = result.assets[0];
+      if (!file.name.toLowerCase().endsWith('.pdf') && file.mimeType !== 'application/pdf') {
+        setApplyError('El archivo seleccionado no es un PDF.');
+        return;
+      }
+      if (file.size !== undefined && file.size > 5 * 1024 * 1024) {
+        setApplyError('El archivo seleccionado supera el tamaño máximo permitido de 5 MB.');
+        return;
+      }
+      setUploadedCv({
+        uri: file.uri,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size,
+        file: file.file,
+      });
+      setUseProfileCv(false);
+    } catch (error) {
+      setApplyError(error instanceof Error ? error.message : 'No fue posible abrir los archivos.');
+    }
   };
 
   return (
@@ -165,6 +199,25 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
                   selectedModality === mod && styles.chipTextActive,
                 ]}>
                 {mod}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterScroll}>
+        <View style={styles.filterGroup}>
+          <Text style={styles.filterLabel}>Área:</Text>
+          {areas.map((area) => (
+            <TouchableOpacity
+              key={area}
+              style={[styles.chip, selectedArea === area && styles.chipActive]}
+              onPress={() => setSelectedArea(area)}>
+              <Text style={[styles.chipText, selectedArea === area && styles.chipTextActive]}>
+                {area}
               </Text>
             </TouchableOpacity>
           ))}
@@ -356,15 +409,15 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
                   style={[styles.cvOptionCard, useProfileCv && styles.cvOptionActive]}
                   onPress={() => {
                     setUseProfileCv(true);
-                    setUploadedCvName(null);
+                    setUploadedCv(null);
                     setApplyError(null);
                   }}>
                   <Text style={styles.radioIcon}>{useProfileCv ? '🔘' : '⚪'}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cvOptionTitle}>Usar el CV de mi perfil</Text>
                     <Text style={styles.cvOptionDesc}>
-                      {student.cvFile?.name || 'CV_Carlos_Mendoza_UNIPAZ.pdf'} (
-                      {student.cvFile?.sizeMb || 1.8} MB)
+                      {student.cvFile?.name || 'No has cargado una hoja de vida'}
+                      {student.cvFile?.sizeMb ? ` (${student.cvFile.sizeMb} MB)` : ''}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -380,32 +433,22 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cvOptionTitle}>Adjuntar otra hoja de vida</Text>
                     <Text style={styles.cvOptionDesc}>
-                      {uploadedCvName
-                        ? `Seleccionado: ${uploadedCvName}`
-                        : 'Selecciona un archivo PDF o DOCX (máximo 5 MB)'}
+                      {uploadedCv
+                        ? `Seleccionado: ${uploadedCv.name}`
+                        : 'Selecciona un archivo PDF (máximo 5 MB)'}
                     </Text>
                   </View>
                 </TouchableOpacity>
 
-                {/* Botones de simulación de archivos */}
                 {!useProfileCv && (
-                  <View style={styles.fileSimulatorRow}>
-                    <TouchableOpacity
-                      style={styles.simulatorBtn}
-                      onPress={handleSimulateValidFile}>
-                      <Text style={styles.simulatorBtnText}>
-                        📎 Cargar PDF válido (2.1 MB)
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.simulatorBtn, styles.simulatorErrorBtn]}
-                      onPress={handleSimulateLargeFile}>
-                      <Text style={styles.simulatorErrorText}>
-                        ⚠️ Probar archivo &gt; 5MB
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    style={styles.simulatorBtn}
+                    onPress={() => void handleChooseCv()}>
+                    <Text style={styles.simulatorBtnText}>
+                      {uploadedCv ? 'Elegir otro PDF' : 'Seleccionar PDF'}
+                    </Text>
+                  </TouchableOpacity>
                 )}
 
                 {applyError && (
@@ -423,8 +466,11 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
                 <View style={styles.modalActions}>
                   <TouchableOpacity
                     style={styles.primaryBtn}
-                    onPress={handleConfirmApply}>
-                    <Text style={styles.primaryBtnText}>Enviar mi postulación</Text>
+                    disabled={isApplying}
+                    onPress={() => void handleConfirmApply()}>
+                    <Text style={styles.primaryBtnText}>
+                      {isApplying ? 'Enviando…' : 'Enviar mi postulación'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </>

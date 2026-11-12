@@ -6,6 +6,8 @@ interface RoleHeaderProps {
   currentRole: UserRole;
   onSelectRole: (role: UserRole) => void;
   onOpenLoginModal?: () => void;
+  onLogout?: () => void;
+  onGoHome?: () => void;
   userName?: string;
 }
 
@@ -13,6 +15,8 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
   currentRole,
   onSelectRole,
   onOpenLoginModal,
+  onLogout,
+  onGoHome,
   userName,
 }) => {
   const getRoleStories = () => {
@@ -29,19 +33,32 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <View style={styles.titleArea}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Ir a la página de inicio"
+          onPress={onGoHome}
+          style={styles.titleArea}>
           <Text style={styles.brandTitle}>UniEmpleo</Text>
-          <Text style={styles.brandSubtitle}>UNIPAZ · Barrancabermeja</Text>
-        </View>
+          <Text style={styles.brandSubtitle}>
+            {userName || 'UNIPAZ · Barrancabermeja'}
+          </Text>
+        </TouchableOpacity>
 
-        {onOpenLoginModal && (
+        {userName && onLogout ? (
+          <TouchableOpacity
+            style={styles.authBadge}
+            onPress={onLogout}
+            activeOpacity={0.8}>
+            <Text style={styles.authBadgeText}>Cerrar sesión</Text>
+          </TouchableOpacity>
+        ) : onOpenLoginModal ? (
           <TouchableOpacity
             style={styles.authBadge}
             onPress={onOpenLoginModal}
             activeOpacity={0.8}>
-            <Text style={styles.authBadgeText}>🔑 Probar Auth (HU-01)</Text>
+            <Text style={styles.authBadgeText}>Iniciar sesión</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.roleTabsContainer}>

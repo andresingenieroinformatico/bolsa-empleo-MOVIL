@@ -19,8 +19,8 @@ import {
 interface AdminDashboardViewProps {
   kpis: AdminKPIs;
   companies: CompanyProfile[];
-  onApproveCompany: (companyId: string) => void;
-  onRejectCompany: (companyId: string, reason: string) => void;
+  onApproveCompany: (companyId: string) => Promise<void>;
+  onRejectCompany: (companyId: string, reason: string) => Promise<void>;
 }
 
 export const HU08_AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
@@ -41,6 +41,8 @@ export const HU08_AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [rejectingCompanyId, setRejectingCompanyId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approvalNotice, setApprovalNotice] = useState<string | null>(null);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
+  const [processingCompanyId, setProcessingCompanyId] = useState<string | null>(null);
 
   const pendingCompanies = companies.filter((c) => c.status === 'pending');
 
@@ -70,22 +72,38 @@ export const HU08_AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     );
   };
 
-  const handleApprove = (companyId: string, name: string) => {
-    onApproveCompany(companyId);
-    setApprovalNotice(`¡Empresa "${name}" aprobada exitosamente! Ya tiene habilitada la publicación de vacantes.`);
-    setTimeout(() => setApprovalNotice(null), 3000);
+  const handleApprove = async (companyId: string, name: string) => {
+    setApprovalError(null);
+    setProcessingCompanyId(companyId);
+    try {
+      await onApproveCompany(companyId);
+      setApprovalNotice(`Empresa "${name}" aprobada. El cambio fue confirmado por el servidor.`);
+      setTimeout(() => setApprovalNotice(null), 3000);
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : 'No fue posible aprobar la empresa.');
+    } finally {
+      setProcessingCompanyId(null);
+    }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!rejectingCompanyId) return;
-    onRejectCompany(
-      rejectingCompanyId,
-      rejectionReason.trim() || 'Documentación corporativa no verificada.'
-    );
-    setRejectingCompanyId(null);
-    setRejectionReason('');
-    setApprovalNotice('La empresa fue rechazada con notificación de motivo por correo.');
-    setTimeout(() => setApprovalNotice(null), 3000);
+    setApprovalError(null);
+    setProcessingCompanyId(rejectingCompanyId);
+    try {
+      await onRejectCompany(
+        rejectingCompanyId,
+        rejectionReason.trim() || 'Documentación corporativa no verificada.',
+      );
+      setRejectingCompanyId(null);
+      setRejectionReason('');
+      setApprovalNotice('La solicitud fue rechazada por el servidor.');
+      setTimeout(() => setApprovalNotice(null), 3000);
+    } catch (error) {
+      setApprovalError(error instanceof Error ? error.message : 'No fue posible rechazar la empresa.');
+    } finally {
+      setProcessingCompanyId(null);
+    }
   };
 
   return (
@@ -112,7 +130,7 @@ export const HU08_AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           style={[styles.tabBtn, activeTab === 'users' && styles.tabBtnActive]}
           onPress={() => setActiveTab('users')}>
           <Text style={[styles.tabBtnText, activeTab === 'users' && styles.tabBtnTextActive]}>
-            👥 Usuarios
+            👥 Usuarios · demo
           </Text>
         </TouchableOpacity>
       </View>
@@ -120,6 +138,11 @@ export const HU08_AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       {approvalNotice && (
         <View style={styles.noticeBanner}>
           <Text style={styles.noticeText}>🔔 {approvalNotice}</Text>
+        </View>
+      )}
+      {approvalError && (
+        <View style={styles.errorNoticeBanner}>
+          <Text style={styles.errorNoticeText}>{approvalError}</Text>
         </View>
       )}
 
@@ -132,7 +155,10 @@ export const HU08_AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       {/* PESTAÑA 1: KPIs y Gráficos (HU-08 Escenarios 1 y 2) */}
       {activeTab === 'kpis' && (
         <ScrollView style={styles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
-          <Text style={styles.sectionHeader}>Métricas del Sistema en Tiempo Real</Text>
+          <Text style={styles.sectionHeader}>Métricas demostrativas</Text>
+          <Text style={styles.sectionSub}>
+            KPIs y gestión de usuarios son datos de demostración; las solicitudes de empresas sí se consultan en la API.
+          </Text>
 
           <View style={styles.kpiGrid}>
             <View style={styles.kpiCard}>
@@ -232,8 +258,11 @@ export const HU08_AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 <View style={styles.companyActionRow}>
                   <TouchableOpacity
                     style={styles.approveBtn}
-                    onPress={() => handleApprove(comp.id, comp.name)}>
-                    <Text style={styles.approveBtnText}>✓ Aprobar Empresa</Text>
+                    disabled={processingCompanyId === comp.id}
+                    onPress={() => void handleApprove(comp.id, comp.name)}>
+                    <Text style={styles.approveBtnText}>
+                      {processingCompanyId === comp.id ? 'Procesando…' : 'Aprobar empresa'}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -369,8 +398,11 @@ export const HU08_AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
               <TouchableOpacity
                 style={styles.confirmRejectBtn}
-                onPress={handleConfirmReject}>
-                <Text style={styles.confirmRejectBtnText}>Confirmar Rechazo</Text>
+                disabled={processingCompanyId !== null}
+                onPress={() => void handleConfirmReject()}>
+                <Text style={styles.confirmRejectBtnText}>
+                  {processingCompanyId ? 'Procesando…' : 'Confirmar rechazo'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

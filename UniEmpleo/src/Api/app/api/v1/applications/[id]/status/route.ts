@@ -13,6 +13,7 @@ export async function PUT(
     const mappedBody: any = {
       status: body.status || body.estado,
       company_notes: body.company_notes,
+      interview_note: body.interview_note,
     };
 
     return forwardToLaravel(request, {

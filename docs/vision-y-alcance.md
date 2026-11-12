@@ -52,6 +52,18 @@ Va también en la descripción del proyecto de GitHub Projects.
 | **HU-05 · Postulación a vacante** se simplificó (5 → 3 pts) | Se desacopló la subida/validación del archivo PDF (max 5 MB) del servicio asíncrono de notificación push (corte P de SPIDR) |
 | **HU-13 · Compartir vacante por WhatsApp** baja a **Could** | No bloquea el flujo principal de postulación directa en la app y se priorizó la búsqueda y filtros esenciales en el MVP móvil |
 
+### Refinamiento de administración para el Sprint 4
+
+Para hacer estimable y verificable el trabajo administrativo, se conserva la aprobación de empresas en HU-02 y la moderación de vacantes en HU-03. Las capacidades independientes se representan como historias separadas:
+
+| Historia | Prioridad | Alcance |
+|---|---|---|
+| HU-08 | Should | Indicadores principales del sistema |
+| HU-15 | Should | Búsqueda, filtros y paginación del listado de usuarios |
+| HU-16 | Could | Gráfico mensual de postulaciones, ya contemplado como métrica avanzada |
+| HU-17 | Should | Activación y desactivación de cuentas |
+| HU-18 | Should | Historial de acciones administrativas |
+
 ## Fuera del alcance este semestre
 
 - **Publicar la versión de iOS:** se distribuye solo el APK de Android y ejecución mediante Expo Go / depuración USB durante el semestre.

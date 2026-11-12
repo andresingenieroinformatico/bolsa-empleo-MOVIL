@@ -25,6 +25,11 @@ Característica: Búsqueda y consulta de vacantes
     Cuando selecciono mi programa académico en el filtro
     Entonces solo se muestran vacantes relevantes para mi programa
 
+  Escenario: Estudiante filtra vacantes por disponibilidad horaria
+    Dado que registré mi disponibilidad horaria en mi perfil
+    Cuando filtro las vacantes por horarios compatibles
+    Entonces solo se muestran vacantes cuyos horarios coinciden con mi disponibilidad
+
   Escenario: No hay vacantes disponibles con los filtros aplicados
     Dado que aplico filtros muy específicos
     Cuando no existen vacantes que coincidan

@@ -1,0 +1,142 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  admin
+  company
+  student
+}
+
+enum JobStatus {
+  activa
+  pausada
+  cerrada
+}
+
+enum ApplicationStatus {
+  pending
+  reviewed
+  interview
+  accepted
+  rejected
+}
+
+model User {
+  id              Int             @id @default(autoincrement())
+  name            String          @db.VarChar(191)
+  email           String          @unique @db.VarChar(191)
+  password        String          @db.VarChar(255)
+  role            Role            @default(student)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+
+  student_profile StudentProfile?
+  company_profile CompanyProfile?
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id           Int           @id @default(autoincrement())
+  user_id      Int           @unique
+  carrera      String?       @db.VarChar(191)
+  semestre     Int?
+  documento    String?       @db.VarChar(100)
+  telefono     String?       @db.VarChar(50)
+  descripcion  String?       @db.Text
+  cv_url       String?       @db.VarChar(255)
+
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@map("student_profiles")
+}
+
+model CompanyProfile {
+  id             Int        @id @default(autoincrement())
+  user_id        Int        @unique
+  nombre_empresa String     @db.VarChar(191)
+  nit            String?    @db.VarChar(100)
+  aprobada       Boolean    @default(false)
+
+  user           User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  job_offers     JobOffer[]
+
+  @@map("company_profiles")
+}
+
+model JobOffer {
+  id           Int           @id @default(autoincrement())
+  company_id   Int
+  titulo       String        @db.VarChar(191)
+  descripcion  String        @db.Text
+  ubicacion    String        @db.VarChar(191)
+  salario      String?       @db.VarChar(100)
+  modalidad    String        @db.VarChar(100)
+  estado       JobStatus     @default(activa)
+  created_at   DateTime      @default(now())
+
+  company      CompanyProfile @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@map("job_offers")
+}
+
+model Application {
+  id                Int               @id @default(autoincrement())
+  job_offer_id      Int
+  student_id        Int
+  cv_url            String?           @db.VarChar(255)
+  estado            ApplicationStatus @default(pending)
+  company_notes     String?           @db.Text
+  fecha_postulacion DateTime          @default(now())
+
+  job_offer         JobOffer          @relation(fields: [job_offer_id], references: [id], onDelete: Cascade)
+  student           StudentProfile    @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@unique([job_offer_id, student_id])
+  @@map("applications")
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  titulo     String   @db.VarChar(191)
+  mensaje    String   @db.Text
+  leida      Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model ApiAuditLog {
+  id          Int      @id @default(autoincrement())
+  endpoint    String   @db.VarChar(191)
+  method      String   @db.VarChar(20)
+  status_code Int
+  user_email  String?  @db.VarChar(191)
+  ip_address  String?  @db.VarChar(100)
+  duration_ms Int?
+  created_at  DateTime @default(now())
+
+  @@map("api_audit_logs")
+}
+
+model BridgeCache {
+  id         Int      @id @default(autoincrement())
+  cache_key  String   @unique @db.VarChar(191)
+  data       String   @db.LongText
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  @@map("bridge_caches")
+}

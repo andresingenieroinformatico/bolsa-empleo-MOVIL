@@ -106,16 +106,22 @@ Vista **«Por épica»** del backlog. Criterios de aceptación detallados en for
 | ID | Historia | Prioridad | Pts | Escenarios | Feliz · error · móvil |
 |---|---|---|---|---|---|
 | **HU-01** | Autenticación de estudiante con Google OAuth institucional | Must | 3 | 4 | Login exitoso · dominio no UNIPAZ · cancelación de permisos en pantalla móvil |
-| **HU-02** | Registro y verificación de empresa | Must | 3 | 4 | Empresa creada pendiente · correo duplicado · validación de NIT en teclado móvil |
-| **HU-03** | Publicación de vacantes por empresa aprobada | Must | 3 | 6 | Vacante activa · empresa no aprobada · selector de fecha límite en pantalla táctil |
-| **HU-04** | Búsqueda y consulta de vacantes con filtros | Must | 3 | 6 | Listado paginado · filtros por horario/área · sin resultados · scroll en pantalla de 360 dp |
+| **HU-02** | Registro y verificación de empresa | Must | 3 | 6 | Empresa pendiente · correo duplicado · NIT inválido · aprobación/rechazo con auditoría · cuenta inactiva |
+| **HU-03** | Publicación de vacantes por empresa aprobada | Must | 3 | 9 | Vacante activa · empresa no aprobada · selector de fecha límite · pausa · reactivación · cierre |
+| **HU-04** | Búsqueda y consulta de vacantes con filtros | Must | 3 | 7 | Listado paginado · filtros por horario/área/modalidad/programa · sin resultados · detalle |
 | **HU-05** | Postulación a vacantes adjuntando hoja de vida | Must | 3 | 5 | Postulación exitosa · duplicada rechazada · reutilizar CV del perfil · llamada entrante a mitad del envío |
-| **HU-06** | Seguimiento del estado de postulación | Must | 2 | 6 | Ver historial · notificación push de entrevista/aceptado · notas de empresa ocultas |
+| **HU-06** | Seguimiento del estado de postulación | Must | 2 | 7 | Ver historial · cambios de estado y avisos push · permisos denegados · notas de empresa ocultas |
 | **HU-07** | Gestión de candidatos por parte de la empresa | Must | 3 | 7 | Ver aspirantes · descarga de CV seguro · actualización de estado · error 403 en vacante ajena |
-| **HU-08** | Panel de administración y supervisión | Should | 3 | 5 | Ver KPIs · aprobar/rechazar empresa · activar usuario · acceso restringido |
-| **HU-09** | Perfil del estudiante y disponibilidad horaria | Must | 3 | 5 | Guardar horario por días · subir PDF · reemplazo de CV · archivo mayor a 5 MB |
+| **HU-08** | Indicadores principales de administración | Should | 3 | 2 | KPIs principales · acceso restringido por rol |
+| **HU-09** | Perfil del estudiante y disponibilidad horaria | Must | 3 | 6 | Perfil académico · disponibilidad · subir/reemplazar PDF · validar formato y límite de 5 MB |
+| **HU-15** | Consulta del listado de usuarios | Should | 2 | 4 | Búsqueda · filtro por rol · paginación · estado vacío |
+| **HU-16** | Gráfico mensual de postulaciones | Could | 3 | 3 | Año en curso · meses sin datos · exclusión de otros años |
+| **HU-17** | Activación y desactivación de cuentas | Should | 2 | 4 | Desactivar · reactivar · proteger cuentas admin · acceso restringido |
+| **HU-18** | Historial de acciones administrativas | Should | 2 | 4 | Consultar cambios · registrar actor y acción · proteger información sensible · acceso restringido |
 
 *Nota sobre HU-06 y HU-07:* Los cambios de estado ejecutados en HU-07 disparan automáticamente las alertas y eventos evaluados en HU-06, compartiendo el mismo modelo relacional (`Application`).
+
+Las funciones administrativas de HU-02 y HU-03 también generan registros de auditoría según HU-18. La aprobación empresarial y la moderación de vacantes permanecen en sus historias originales para evitar duplicar alcance.
 
 ---
 

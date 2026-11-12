@@ -15,46 +15,44 @@ Que un estudiante pueda autenticarse con Google y que una empresa pueda registra
 
 | ID | Historia de Usuario | Puntos | Responsable | Estado |
 |----|---------------------|--------|-------------|--------|
-| HU-01 | Login con Google OAuth 2.0 (estudiante) | — | Backend | ⬜ Todo |
-| HU-02 | Registro de empresa con email y NIT | — | Backend | ⬜ Todo |
-| HU-03 | Middleware de rol y redirección por panel | — | Backend | ⬜ Todo |
-| HU-04 | Admin aprueba/rechaza empresa + notificación email | — | Backend | ⬜ Todo |
-| HU-05 | Empresa actualiza su perfil (logo, sector, descripción) | — | Frontend | ⬜ Todo |
-| HU-06 | Empresa publica una vacante (título, descripción, modalidad, fecha límite) | — | Backend | ⬜ Todo |
-| HU-19 | Registro de disponibilidad horaria del estudiante | — | Frontend | ⬜ Todo |
-| HU-20 | Subida de hoja de vida en perfil del estudiante | — | Backend | ⬜ Todo |
+| HU-01 | Autenticación de estudiante con Google OAuth institucional | 3 | Backend | ⬜ Todo |
+| HU-02 | Registro y verificación de empresa, incluida la aprobación o rechazo administrativo | 3 | Backend | ⬜ Todo |
+| TEC-02 | Base de API, autenticación JWT y autorización por rol | 3 | Backend | ⬜ Todo |
+| HU-03 | Publicación y gestión de vacantes por empresa aprobada | 3 | Backend | ⬜ Todo |
+| HU-09 | Perfil del estudiante, disponibilidad horaria y CV PDF privado | 3 | Frontend + Backend | ⬜ Todo |
+| HU-12 | Actualización del perfil público de empresa | 2 | Frontend + Backend | ⬜ Todo |
 
 ---
 
 ## ✅ Criterios de Aceptación del Sprint
 
-- [ ] Un estudiante puede iniciar sesión con Google y su perfil se crea automáticamente
+- [ ] Un estudiante con correo `@unipaz.edu.co` puede iniciar sesión con Google y su perfil se crea automáticamente
 - [ ] Una empresa registrada queda en estado `pending` y no puede publicar hasta ser aprobada
-- [ ] El admin ve el panel de empresas pendientes y puede aprobar/rechazar
+- [ ] El administrador puede aprobar o rechazar una empresa pendiente
 - [ ] La empresa recibe notificación por email al ser aprobada
 - [ ] Una empresa aprobada puede publicar vacantes con todos los campos requeridos
-- [ ] El estudiante puede registrar su disponibilidad horaria
-- [ ] Los CVs se almacenan en disco privado (no accesibles por URL directa)
+- [ ] Una empresa aprobada puede actualizar la información de su perfil
+- [ ] El estudiante puede completar su perfil y registrar su disponibilidad horaria
+- [ ] El estudiante puede subir un CV PDF de hasta 5 MB; se almacena de forma privada y no es accesible por URL directa
 
 ---
 
 ## 🔒 Requerimientos Técnicos a Tener en Cuenta
 
 ### Backend (Next.js)
-- Usar `NextAuth.js` / Google OAuth 2.0 API para verificación de tokens de estudiantes
-- Hash `bcrypt` para contraseñas de empresas y admin
-- Middleware / guards de autorización para controlar acceso a vacantes
-- Todos los inputs validados con esquemas `Zod`
-- Notificaciones procesadas de forma asíncrona (BullMQ / Nodemailer)
+- Verificar Google OAuth 2.0 y restringir el acceso estudiantil a cuentas `@unipaz.edu.co`
+- Emitir tokens JWT y proteger las rutas según el rol del usuario
+- Almacenar contraseñas empresariales con hash seguro
+- Validar las entradas con esquemas `Zod`
+- Mantener los CVs en almacenamiento privado y autorizar su consulta
 - Logo de empresa: max 2MB, subida multipart y almacenamiento seguro
 
 ### Frontend (React Native)
-- Integrar flujo de Google OAuth con el backend Next.js
+- Integrar el inicio de sesión Google con la API y almacenar el token en `Expo SecureStore`
 - Navegación entre pantallas: panel estudiante, panel empresa, panel admin
 - Formularios controlados para registro, postulación y perfil
 - Listado paginado de vacantes con filtros
-- Manejo de estados de postulación en UI
-- Notificaciones push (Expo Push Notifications) para cambios de estado
+- Selector de CV que solo permita PDF de hasta 5 MB
 
 ---
 

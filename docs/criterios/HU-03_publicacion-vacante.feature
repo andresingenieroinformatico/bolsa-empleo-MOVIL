@@ -39,3 +39,25 @@ Característica: Publicación de vacantes por empresa
     Cuando pauso una vacante desde el panel de administración
     Entonces la vacante cambia a estado "paused"
     Y deja de ser visible para los estudiantes
+    Y la acción queda registrada en el historial administrativo
+
+  Escenario: Admin reactiva una vacante pausada y vigente
+    Dado que soy administrador y la vacante pertenece a una empresa aprobada
+    Y la fecha límite de la vacante todavía está vigente
+    Cuando reactivo la vacante pausada
+    Entonces la vacante cambia a estado "active"
+    Y vuelve a ser visible para los estudiantes
+    Y la acción queda registrada en el historial administrativo
+
+  Escenario: Admin no reactiva una vacante vencida
+    Dado que soy administrador y la fecha límite de la vacante ya pasó
+    Cuando intento reactivar la vacante
+    Entonces el sistema rechaza la operación
+    Y la vacante no aparece entre las ofertas activas
+
+  Escenario: Admin cierra una vacante
+    Dado que soy administrador y existe una vacante activa o pausada
+    Cuando cierro la vacante desde el panel
+    Entonces la vacante cambia a estado "closed"
+    Y deja de aparecer en los resultados de búsqueda
+    Y la acción queda registrada en el historial administrativo

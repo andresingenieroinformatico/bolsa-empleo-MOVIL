@@ -4,17 +4,18 @@ Característica: Postulación a vacantes
   Quiero postularme a vacantes disponibles adjuntando mi hoja de vida
   Para que las empresas evalúen mi perfil
 
-  Escenario: Estudiante se postula exitosamente a una vacante sin CV obligatorio
+  Escenario: Estudiante se postula usando una hoja de vida PDF
     Dado que soy un estudiante autenticado y hay una vacante activa disponible
-    Cuando hago clic en "Postularme" en el detalle de la vacante
+    Cuando adjunto mi hoja de vida en formato PDF de hasta 5 MB y confirmo la postulación
     Entonces mi postulación se registra en estado "pending"
-    Y la empresa recibe una notificación por email y en la plataforma
+    Y el archivo queda almacenado de forma privada
+    Y la empresa recibe una notificación de nueva postulación
 
-  Escenario: Estudiante se postula adjuntando CV cuando es obligatorio
-    Dado que la vacante requiere CV para postularse
-    Cuando completo la postulación y adjunto mi hoja de vida (PDF o DOCX)
-    Entonces el archivo se almacena en disco privado del servidor
-    Y la postulación queda registrada en estado "pending"
+  Escenario: El archivo adjunto no cumple el formato o tamaño permitido
+    Dado que estoy preparando una postulación
+    Cuando selecciono un archivo que no es PDF o supera 5 MB
+    Entonces la aplicación explica el formato y tamaño permitidos
+    Y no envía el archivo ni crea la postulación
 
   Escenario: Estudiante intenta postularse a la misma vacante dos veces
     Dado que ya me postulé a una vacante específica
@@ -26,6 +27,7 @@ Característica: Postulación a vacantes
     Dado que tengo una hoja de vida subida en mi perfil
     Cuando me postulo a una vacante que requiere CV
     Entonces puedo seleccionar "Usar el CV de mi perfil" sin adjuntar un archivo nuevo
+    Y la postulación conserva el estado del formulario si la aplicación pasa a segundo plano
 
   Escenario: Estudiante intenta descargar el CV de otro estudiante directamente
     Dado que existo como usuario del sistema

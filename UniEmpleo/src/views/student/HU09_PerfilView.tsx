@@ -1,21 +1,28 @@
 import React, { useState } from 'react';
 import * as DocumentPicker from 'expo-document-picker';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StudentProfile } from '@/data/mock-data';
 import { ApiDocument } from '@/services/api';
+import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
+import { Icon } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Notice } from '@/components/ui/notice';
+import { Avatar } from '@/components/ui/avatar';
+import { SectionHeader } from '@/components/ui/section-header';
 
 interface PerfilViewProps {
   student: StudentProfile;
   onUpdateStudent: (updated: StudentProfile) => Promise<void>;
   onUploadCv: (file: ApiDocument) => Promise<StudentProfile>;
 }
+
+const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const SLOTS = [
+  { key: 'Mañana', hint: '8–12' },
+  { key: 'Tarde', hint: '2–6' },
+  { key: 'Noche', hint: '6–10' },
+];
 
 export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   student,
@@ -35,21 +42,12 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   const [cvSuccess, setCvSuccess] = useState<string | null>(null);
   const [isUploadingCv, setIsUploadingCv] = useState(false);
 
-  const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  const timeSlots = ['Mañana', 'Tarde', 'Noche'];
-
   const toggleSlot = (day: string, slot: string) => {
     const currentSlots = availability[day] || [];
-    const exists = currentSlots.includes(slot);
-    const updated = exists
-      ? currentSlots.filter((s) => s !== slot)
+    const updated = currentSlots.includes(slot)
+      ? currentSlots.filter((entry) => entry !== slot)
       : [...currentSlots, slot];
-
-    const newAvailability = {
-      ...availability,
-      [day]: updated,
-    };
-    setAvailability(newAvailability);
+    setAvailability({ ...availability, [day]: updated });
   };
 
   const handleSaveProfile = async () => {
@@ -66,7 +64,7 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
     setIsSaving(true);
     try {
       await onUpdateStudent(updatedStudent);
-      setSaveMessage('Perfil actualizado correctamente.');
+      setSaveMessage('Tu perfil quedó actualizado.');
       setTimeout(() => setSaveMessage(null), 2500);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'No fue posible guardar el perfil.');
@@ -113,179 +111,210 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headerCard}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>CM</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled">
+      <View style={styles.profileCard}>
+        <View style={styles.profileTop}>
+          <Avatar name={student.name} size={68} tone="green" />
+          <View style={styles.profileCopy}>
+            <Text style={styles.name}>{student.name}</Text>
+            <Text style={styles.email} numberOfLines={1}>
+              {student.email}
+            </Text>
+            <View style={styles.verifiedPill}>
+              <Icon name="shield-checkmark" size={12} color={Brand.greenDark} />
+              <Text style={styles.verifiedText}>Cuenta institucional verificada</Text>
+            </View>
+          </View>
         </View>
-        <Text style={styles.studentName}>{student.name}</Text>
-        <Text style={styles.studentEmail}>{student.email}</Text>
-        <View style={styles.googleVerifiedBadge}>
-          <Text style={styles.googleIcon}>G</Text>
-          <Text style={styles.googleVerifiedText}>Cuenta institucional verificada</Text>
+
+        <View style={styles.profileMeta}>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Programa</Text>
+            <Text style={styles.metaValue} numberOfLines={1}>
+              {program || 'Sin registrar'}
+            </Text>
+          </View>
+          <View style={styles.metaDivider} />
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Semestre</Text>
+            <Text style={styles.metaValue}>{semester || '—'}</Text>
+          </View>
         </View>
       </View>
 
-      {/* Formulario de Datos Personales */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>1. Información Académica y Contacto</Text>
-        <Text style={styles.sectionSubtitle}>
-          Datos complementarios para postulaciones laborales en Barrancabermeja
-        </Text>
+      <View style={styles.section}>
+        <SectionHeader
+          overline="Datos académicos"
+          title="Información de contacto"
+          subtitle="La empresa verá estos datos cuando revises tu postulación."
+        />
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Programa Académico UNIPAZ</Text>
-          <TextInput
-            style={styles.input}
-            value={program}
-            onChangeText={setProgram}
+        <TextField
+          label="Programa académico"
+          value={program}
+          onChangeText={setProgram}
+          placeholder="Ej. Ingeniería de Sistemas"
+          icon="school-outline"
+          maxLength={120}
+        />
+
+        <View style={styles.row}>
+          <TextField
+            label="Semestre"
+            value={semester}
+            onChangeText={setSemester}
+            keyboardType="number-pad"
+            placeholder="6"
+            maxLength={2}
+            containerStyle={styles.rowItemNarrow}
+          />
+          <TextField
+            label="Teléfono móvil"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            placeholder="+57 300 000 0000"
+            maxLength={20}
+            containerStyle={styles.rowItemWide}
           />
         </View>
+      </View>
 
-        <View style={styles.rowFields}>
-          <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Semestre Actual</Text>
-            <TextInput
-              style={styles.input}
-              value={semester}
-              onChangeText={setSemester}
-              keyboardType="numeric"
-            />
+      <View style={styles.section}>
+        <SectionHeader
+          overline="Disponibilidad"
+          title="Horarios en los que puedes trabajar"
+          subtitle="Marca los turnos que no se cruzan con tus clases."
+        />
+
+        <View style={styles.matrix}>
+          <View style={styles.matrixHeader}>
+            <Text style={[styles.matrixHeaderCell, styles.matrixDayColumn]}>Día</Text>
+            {SLOTS.map((slot) => (
+              <View key={slot.key} style={styles.matrixSlotHeader}>
+                <Text style={styles.matrixHeaderCell}>{slot.key}</Text>
+                <Text style={styles.matrixHeaderHint}>{slot.hint}</Text>
+              </View>
+            ))}
           </View>
-          <View style={[styles.fieldGroup, { flex: 1.5 }]}>
-            <Text style={styles.fieldLabel}>Teléfono Móvil</Text>
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
+
+          {DAYS.map((day, index) => {
+            const daySlots = availability[day] || [];
+            return (
+              <View
+                key={day}
+                style={[styles.matrixRow, index === DAYS.length - 1 && styles.matrixRowLast]}>
+                <Text style={[styles.matrixDay, styles.matrixDayColumn]}>{day}</Text>
+                {SLOTS.map((slot) => {
+                  const selected = daySlots.includes(slot.key);
+                  return (
+                    <Pressable
+                      key={slot.key}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel={`${day} ${slot.key}`}
+                      accessibilityState={{ checked: selected }}
+                      onPress={() => toggleSlot(day, slot.key)}
+                      style={({ pressed }) => [
+                        styles.matrixCell,
+                        selected && styles.matrixCellSelected,
+                        pressed && styles.matrixCellPressed,
+                      ]}>
+                      <Icon
+                        name={selected ? 'checkmark' : 'remove'}
+                        size={selected ? 15 : 12}
+                        color={selected ? Brand.surface : Brand.slateFaint}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, styles.legendDotActive]} />
+            <Text style={styles.legendText}>Disponible</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={styles.legendDot} />
+            <Text style={styles.legendText}>No disponible</Text>
           </View>
         </View>
       </View>
 
-      {/* Matriz Semanal de Disponibilidad Horaria (HU-09 Escenario 2) */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle}>2. Disponibilidad Horaria Semanal</Text>
-          <Text style={styles.tag}>HU-09</Text>
-        </View>
-        <Text style={styles.sectionSubtitle}>
-          Toca cada casilla para indicar los turnos en que puedes trabajar sin cruzar con tus clases
-        </Text>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.matrixContainer}>
-            <View style={styles.matrixHeaderRow}>
-              <Text style={[styles.matrixHeaderCell, { flex: 1.2 }]}>Día</Text>
-              <Text style={styles.matrixHeaderCell}>Mañana{'\n'}(8-12)</Text>
-              <Text style={styles.matrixHeaderCell}>Tarde{'\n'}(2-6)</Text>
-              <Text style={styles.matrixHeaderCell}>Noche{'\n'}(6-10)</Text>
-            </View>
-
-            {daysOfWeek.map((day) => {
-              const daySlots = availability[day] || [];
-              return (
-                <View key={day} style={styles.matrixRow}>
-                  <Text style={[styles.matrixDayCell, { flex: 1.2 }]}>{day}</Text>
-                  {timeSlots.map((slot) => {
-                    const isSelected = daySlots.includes(slot);
-                    return (
-                      <TouchableOpacity
-                        key={slot}
-                        style={[
-                          styles.matrixSlotBtn,
-                          isSelected && styles.matrixSlotBtnActive,
-                        ]}
-                        onPress={() => toggleSlot(day, slot)}>
-                        <Text
-                          style={[
-                            styles.matrixSlotText,
-                            isSelected && styles.matrixSlotTextActive,
-                          ]}>
-                          {isSelected ? '✓' : '—'}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </View>
-
-      {/* Gestión de Hoja de Vida (HU-09 Escenarios 3, 4 y 5) */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle}>3. Hoja de Vida en el Perfil</Text>
-          <Text style={styles.tag}>PDF max 5MB</Text>
-        </View>
-        <Text style={styles.sectionSubtitle}>
-          Se reutilizará automáticamente al postularte a vacantes con un solo toque
-        </Text>
+      <View style={styles.section}>
+        <SectionHeader
+          overline="Hoja de vida"
+          title="Tu CV en el perfil"
+          subtitle="Se reutiliza al postularte y te ahorra adjuntarlo en cada oferta."
+          action={<Text style={styles.formatHint}>PDF · máx. 5 MB</Text>}
+        />
 
         {cvFile ? (
-          <View style={styles.cvInfoCard}>
-            <Text style={styles.cvDocIcon}>📄</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cvFileName}>{cvFile.name}</Text>
-              <Text style={styles.cvFileSize}>
-                Tamaño: {cvFile.sizeMb === undefined ? 'No disponible' : `${cvFile.sizeMb} MB`}
-                {cvFile.uploadDate ? ` · Subido el ${cvFile.uploadDate}` : ''}
+          <View style={styles.cvCard}>
+            <View style={styles.cvIconWrap}>
+              <Icon name="document-text" size={22} color={Brand.greenDark} />
+            </View>
+            <View style={styles.cvCopy}>
+              <Text style={styles.cvName} numberOfLines={1}>
+                {cvFile.name}
               </Text>
+              <Text style={styles.cvMeta}>
+                {cvFile.sizeMb === undefined ? 'PDF' : `${cvFile.sizeMb} MB`}
+                {cvFile.uploadDate ? ` · Actualizado el ${cvFile.uploadDate}` : ''}
+              </Text>
+            </View>
+            <View style={styles.cvStatus}>
+              <Icon name="checkmark-circle" size={18} color={Brand.green} />
             </View>
           </View>
         ) : (
-          <View style={styles.noCvNotice}>
-            <Text style={styles.noCvText}>Aún no has subido tu hoja de vida.</Text>
+          <View style={styles.cvEmpty}>
+            <View style={styles.cvEmptyIcon}>
+              <Icon name="cloud-upload-outline" size={22} color={Brand.slateSoft} />
+            </View>
+            <View style={styles.cvCopy}>
+              <Text style={styles.cvName}>Aún no has subido tu hoja de vida</Text>
+              <Text style={styles.cvMeta}>Sube un PDF para postularte en un solo toque.</Text>
+            </View>
           </View>
         )}
 
-        <TouchableOpacity
-          accessibilityRole="button"
-          disabled={isUploadingCv}
-          style={[styles.cvActionBtn, isUploadingCv && styles.disabledButton]}
-          onPress={() => void handleUploadCv()}>
-          <Text style={styles.cvActionText}>
-            {isUploadingCv ? 'Subiendo hoja de vida…' : 'Seleccionar y subir PDF'}
-          </Text>
-        </TouchableOpacity>
+        <Button
+          label={isUploadingCv ? 'Subiendo…' : cvFile ? 'Reemplazar hoja de vida' : 'Subir hoja de vida'}
+          onPress={() => void handleUploadCv()}
+          loading={isUploadingCv}
+          variant={cvFile ? 'secondary' : 'tonal'}
+          size="sm"
+          icon="cloud-upload-outline"
+          fullWidth
+        />
 
-        {cvError && (
-          <View style={styles.errorAlert}>
-            <Text style={styles.errorAlertText}>❌ {cvError}</Text>
-          </View>
-        )}
-
-        {cvSuccess && (
-          <View style={styles.successAlert}>
-            <Text style={styles.successAlertText}>✅ {cvSuccess}</Text>
-          </View>
-        )}
+        {cvError ? (
+          <Notice tone="error" message={cvError} onDismiss={() => setCvError(null)} />
+        ) : null}
+        {cvSuccess ? <Notice tone="success" message={cvSuccess} /> : null}
       </View>
 
-      {saveMessage && (
-        <View style={styles.saveAlert}>
-          <Text style={styles.saveAlertText}>✅ {saveMessage}</Text>
-        </View>
-      )}
-      {saveError && (
-        <View style={styles.errorAlert}>
-          <Text style={styles.errorAlertText}>{saveError}</Text>
-        </View>
-      )}
+      {saveError ? (
+        <Notice tone="error" title="No se pudo guardar" message={saveError} onDismiss={() => setSaveError(null)} />
+      ) : null}
+      {saveMessage ? <Notice tone="success" message={saveMessage} /> : null}
 
-      {/* Botón Guardar Perfil */}
-      <TouchableOpacity
-        style={styles.saveProfileBtn}
-        disabled={isSaving}
-        activeOpacity={0.85}
-        onPress={() => void handleSaveProfile()}>
-        <Text style={styles.saveProfileBtnText}>
-          {isSaving ? 'Guardando…' : 'Guardar perfil y disponibilidad'}
-        </Text>
-      </TouchableOpacity>
+      <Button
+        label={isSaving ? 'Guardando…' : 'Guardar cambios'}
+        onPress={() => void handleSaveProfile()}
+        loading={isSaving}
+        size="lg"
+        icon="save-outline"
+        fullWidth
+      />
     </ScrollView>
   );
 };
@@ -294,293 +323,255 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    maxWidth: 960,
-    alignSelf: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: Brand.canvas,
   },
   content: {
     width: '100%',
-    maxWidth: 800,
+    maxWidth: 760,
     alignSelf: 'center',
-    padding: 16,
-    paddingBottom: 40,
-    gap: 14,
+    padding: Space.lg,
+    paddingBottom: Space.huge,
+    gap: Space.lg,
   },
-  headerCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 18,
-    alignItems: 'center',
+  profileCard: {
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xxl,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Brand.line,
+    padding: Space.xl,
+    gap: Space.lg,
+    ...Shadows.card,
   },
-  avatarCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#00963F',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  studentName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1A1F36',
-  },
-  studentEmail: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  googleVerifiedBadge: {
+  profileTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E6F7ED',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 8,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#34D399',
+    gap: Space.lg,
   },
-  googleIcon: {
-    color: '#00963F',
-    fontWeight: '900',
-    fontSize: 11,
+  profileCopy: {
+    flex: 1,
+    gap: 3,
   },
-  googleVerifiedText: {
-    fontSize: 11,
-    color: '#007832',
-    fontWeight: '600',
+  name: {
+    ...Type.titleSmall,
+    color: Brand.ink,
   },
-  sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  email: {
+    ...Type.caption,
+    color: Brand.slate,
   },
-  sectionTitleRow: {
+  verifiedPill: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 2,
+    alignSelf: 'flex-start',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 6,
+    borderRadius: Radius.pill,
+    backgroundColor: Brand.greenTint,
+    borderWidth: 1,
+    borderColor: Brand.greenLine,
   },
-  sectionTitle: {
-    fontSize: 15,
+  verifiedText: {
+    ...Type.caption,
+    fontSize: 10.5,
     fontWeight: '700',
-    color: '#1A1F36',
+    color: Brand.greenDeep,
   },
-  tag: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#00963F',
-    backgroundColor: '#E6F7ED',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 12,
-    lineHeight: 16,
-  },
-  fieldGroup: {
-    marginBottom: 10,
-  },
-  rowFields: {
+  profileMeta: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'stretch',
+    borderTopWidth: 1,
+    borderTopColor: Brand.lineSoft,
+    paddingTop: Space.md,
   },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 4,
+  metaItem: {
+    flex: 1,
+    gap: 2,
   },
-  input: {
-    backgroundColor: '#F4F5F7',
+  metaDivider: {
+    width: 1,
+    backgroundColor: Brand.lineSoft,
+    marginHorizontal: Space.md,
+  },
+  metaLabel: {
+    ...Type.overline,
+    fontSize: 9,
+    color: Brand.slateSoft,
+  },
+  metaValue: {
+    ...Type.bodyStrong,
+    color: Brand.ink,
+  },
+  section: {
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xxl,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#1A1F36',
+    borderColor: Brand.line,
+    padding: Space.xl,
+    gap: Space.md,
+    ...Shadows.card,
   },
-  matrixContainer: {
-    minWidth: 480,
+  row: {
+    flexDirection: 'row',
+    gap: Space.md,
+  },
+  rowItemNarrow: {
+    flex: 0.6,
+  },
+  rowItemWide: {
+    flex: 1.4,
+  },
+  matrix: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
+    borderColor: Brand.line,
+    borderRadius: Radius.lg,
     overflow: 'hidden',
   },
-  matrixHeaderRow: {
+  matrixHeader: {
     flexDirection: 'row',
-    backgroundColor: '#F4F5F7',
+    alignItems: 'center',
+    backgroundColor: Brand.surfaceMuted,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: Brand.line,
     paddingVertical: 8,
   },
   matrixHeaderCell: {
-    flex: 1,
+    ...Type.overline,
+    fontSize: 9,
+    color: Brand.slateSoft,
     textAlign: 'center',
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6B7280',
+  },
+  matrixHeaderHint: {
+    ...Type.caption,
+    fontSize: 9,
+    color: Brand.slateFaint,
+    textAlign: 'center',
+  },
+  matrixDayColumn: {
+    width: 88,
+  },
+  matrixSlotHeader: {
+    flex: 1,
+    gap: 1,
   },
   matrixRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4F5F7',
     alignItems: 'center',
-    paddingVertical: 4,
-  },
-  matrixDayCell: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    paddingLeft: 10,
-  },
-  matrixSlotBtn: {
-    flex: 1,
     paddingVertical: 8,
-    marginHorizontal: 4,
-    borderRadius: 6,
-    backgroundColor: '#F4F5F7',
-    alignItems: 'center',
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Brand.lineSoft,
   },
-  matrixSlotBtnActive: {
-    backgroundColor: '#00963F',
+  matrixRowLast: {
+    borderBottomWidth: 0,
   },
-  matrixSlotText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '700',
+  matrixDay: {
+    ...Type.label,
+    color: Brand.inkSoft,
+    paddingLeft: 4,
   },
-  matrixSlotTextActive: {
-    color: '#FFFFFF',
-  },
-  cvInfoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E6F7ED',
-    borderWidth: 1,
-    borderColor: '#34D399',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-    gap: 10,
-  },
-  cvDocIcon: {
-    fontSize: 24,
-  },
-  cvFileName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#00963F',
-  },
-  cvFileSize: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  noCvNotice: {
-    padding: 12,
-    backgroundColor: '#F4F5F7',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  noCvText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  cvActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  cvActionBtn: {
+  matrixCell: {
     flex: 1,
-    backgroundColor: '#00963F',
-    paddingVertical: 9,
-    borderRadius: 8,
+    height: 34,
+    marginHorizontal: 4,
+    borderRadius: Radius.sm,
     alignItems: 'center',
-  },
-  cvActionText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  cvActionErrorBtn: {
-    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    backgroundColor: Brand.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: Brand.lineSoft,
   },
-  cvActionErrorText: {
-    color: '#991B1B',
-    fontSize: 11,
-    fontWeight: '600',
+  matrixCellSelected: {
+    backgroundColor: Brand.green,
+    borderColor: Brand.green,
   },
-  errorAlert: {
-    marginTop: 8,
-    backgroundColor: '#FEF2F2',
-    padding: 8,
-    borderRadius: 8,
+  matrixCellPressed: {
+    opacity: 0.8,
   },
-  errorAlertText: {
-    color: '#B91C1C',
-    fontSize: 11,
-    fontWeight: '600',
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.lg,
   },
-  successAlert: {
-    marginTop: 8,
-    backgroundColor: '#E6F7ED',
-    padding: 8,
-    borderRadius: 8,
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  successAlertText: {
-    color: '#007832',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  saveAlert: {
-    backgroundColor: '#E6F7ED',
-    padding: 10,
-    borderRadius: 10,
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: Brand.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#34D399',
+    borderColor: Brand.lineStrong,
+  },
+  legendDotActive: {
+    backgroundColor: Brand.green,
+    borderColor: Brand.green,
+  },
+  legendText: {
+    ...Type.caption,
+    fontSize: 11,
+    color: Brand.slate,
+  },
+  formatHint: {
+    ...Type.overline,
+    fontSize: 9,
+    color: Brand.greenDark,
+  },
+  cvCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Space.md,
+    padding: Space.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.greenTint,
+    borderWidth: 1,
+    borderColor: Brand.greenLine,
   },
-  saveAlertText: {
-    color: '#007832',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  saveProfileBtn: {
-    backgroundColor: '#00963F',
-    paddingVertical: 14,
-    borderRadius: 12,
+  cvIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.surface,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
   },
-  saveProfileBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
+  cvEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.md,
+    padding: Space.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.surfaceMuted,
+    borderWidth: 1,
+    borderColor: Brand.lineSoft,
+    borderStyle: 'dashed',
+  },
+  cvEmptyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cvCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  cvName: {
+    ...Type.bodyStrong,
+    color: Brand.ink,
+  },
+  cvMeta: {
+    ...Type.caption,
+    fontSize: 11,
+    color: Brand.slate,
+  },
+  cvStatus: {
+    paddingLeft: 4,
   },
 });

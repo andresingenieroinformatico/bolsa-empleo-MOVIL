@@ -1,23 +1,17 @@
 import React, { useState } from 'react';
-import {
-  FlatList,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { FlatList, StyleSheet, Switch, Text, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
-import {
-  CompanyProfile,
-  ContractType,
-  JobModality,
-  JobOffer,
-} from '@/data/mock-data';
+import { CompanyProfile, ContractType, JobModality, JobOffer } from '@/data/mock-data';
+import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
+import { Icon } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { Sheet } from '@/components/ui/sheet';
+import { TextField } from '@/components/ui/text-field';
+import { Notice } from '@/components/ui/notice';
+import { SectionHeader } from '@/components/ui/section-header';
+import { pluralize } from '@/lib/format';
 
 const JOB_MODALITIES: JobModality[] = ['Presencial', 'Remoto', 'Híbrido'];
 const CONTRACT_TYPES: ContractType[] = [
@@ -26,6 +20,13 @@ const CONTRACT_TYPES: ContractType[] = [
   'Prácticas',
   'Tiempo completo',
 ];
+
+const STATUS_LABEL: Record<CompanyProfile['status'], string> = {
+  pending: 'pendiente de aprobación',
+  approved: 'aprobada',
+  rejected: 'rechazada',
+  inactive: 'inactiva',
+};
 
 interface MisVacantesViewProps {
   company: CompanyProfile;
@@ -66,17 +67,13 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
 
-  // Filtrar solo las vacantes de esta empresa
-  const companyJobs = jobs.filter((j) => j.companyId === company.id);
+  const companyJobs = jobs.filter((job) => job.companyId === company.id);
+  const blocked = company.status !== 'approved' && !editingJob;
 
   const handleOpenCreateModal = () => {
-    // Criterio HU-03 Escenario 2: Empresa no aprobada intenta publicar
     if (company.status !== 'approved') {
-      setFormError(
-        'Acceso denegado: Tu empresa está en estado "' +
-          company.status +
-          '". Debes ser aprobada por la administración de UNIPAZ antes de publicar vacantes.'
-      );
+      setEditingJob(null);
+      setFormError(null);
       setShowFormModal(true);
       return;
     }
@@ -147,8 +144,8 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
 
     const requirements = requirementsText
       .split('\n')
-      .map((r) => r.trim())
-      .filter((r) => r.length > 0);
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
 
     setIsSaving(true);
     try {
@@ -197,631 +194,347 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-      <View style={styles.topBarCopy}>
-          <Text style={styles.heading}>Mis Vacantes Publicadas</Text>
-          <Text style={styles.subheading}>
-            {companyJobs.length} ofertas registradas para estudiantes UNIPAZ
-          </Text>
-        </View>
-        {actionError && <Text style={styles.actionError}>{actionError}</Text>}
-
-        <TouchableOpacity
-          style={styles.newJobBtn}
-          activeOpacity={0.85}
-          onPress={handleOpenCreateModal}>
-          <Text style={styles.newJobBtnText}>+ Publicar Vacante</Text>
-        </TouchableOpacity>
-      </View>
-
       <FlatList
+        style={styles.list}
         data={companyJobs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <SectionHeader
+              overline="Gestión de ofertas"
+              title="Mis vacantes"
+              subtitle={`${pluralize(companyJobs.length, 'oferta publicada', 'ofertas publicadas')} para estudiantes UNIPAZ.`}
+            />
+            <Button
+              label="Publicar vacante"
+              onPress={handleOpenCreateModal}
+              icon="add"
+              fullWidth
+            />
+            {actionError ? (
+              <Notice tone="error" message={actionError} onDismiss={() => setActionError(null)} />
+            ) : null}
+          </View>
+        }
         ListEmptyComponent={
           <EmptyState
-            icon="💼"
+            icon="briefcase-outline"
             title="Aún no has publicado vacantes"
             description="Crea tu primera oferta laboral para recibir postulaciones de estudiantes de UNIPAZ."
-            actionLabel="+ Crear mi primera vacante"
+            actionLabel="Crear mi primera vacante"
             onAction={handleOpenCreateModal}
           />
         }
         renderItem={({ item }) => (
-          <View style={styles.jobCard}>
-            <View style={styles.jobCardHeader}>
-              <View style={{ flex: 1 }}>
+          <View style={styles.card}>
+            <View style={styles.cardTop}>
+              <View style={styles.cardTopCopy}>
                 <Text style={styles.jobTitle}>{item.title}</Text>
-                <Text style={styles.jobMeta}>
-                  {item.modality} · {item.contractType} · {item.program}
-                </Text>
+                <View style={styles.metaRow}>
+                  <MetaTag icon="location-outline" label={item.location} />
+                  <MetaTag icon="briefcase-outline" label={item.modality} />
+                  <MetaTag icon="time-outline" label={item.contractType} />
+                </View>
               </View>
-              <StatusBadge status={item.status} />
+              <StatusBadge status={item.status} size="small" />
             </View>
 
-            <Text style={styles.jobDescription} numberOfLines={2}>
+            <Text style={styles.description} numberOfLines={2}>
               {item.description}
             </Text>
+
             {item.salaryRange ? (
-              <Text style={styles.salaryLabel}>
-                Salario: {item.salaryRange}
-                {item.salaryNegotiable ? ' · Negociable' : ''}
-              </Text>
+              <View style={styles.salaryRow}>
+                <Icon name="cash-outline" size={14} color={Brand.greenDark} />
+                <Text style={styles.salaryLabel}>
+                  {item.salaryRange}
+                  {item.salaryNegotiable ? ' · Negociable' : ''}
+                </Text>
+              </View>
             ) : null}
 
-            <View style={styles.jobFooter}>
-              <Text style={styles.deadlineLabel}>📅 Vence: {item.deadline}</Text>
-
-              <View style={styles.actionButtonsRow}>
-                <TouchableOpacity
-                  style={styles.toggleBtn}
-                  disabled={updatingJobId === item.id}
-                  onPress={() => void handleToggleJob(item.id)}>
-                  <Text style={styles.toggleBtnText}>
-                    {updatingJobId === item.id
-                      ? 'Actualizando…'
-                      : item.status === 'active' ? 'Pausar' : 'Activar'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => handleOpenEditModal(item)}>
-                  <Text style={styles.editBtnText}>✏️ Editar</Text>
-                </TouchableOpacity>
+            <View style={styles.cardFooter}>
+              <View style={styles.deadline}>
+                <Icon name="calendar-outline" size={13} color={Brand.slateSoft} />
+                <Text style={styles.deadlineText}>Cierra el {item.deadline}</Text>
+              </View>
+              <View style={styles.actions}>
+                <Button
+                  label={item.status === 'active' ? 'Pausar' : 'Activar'}
+                  onPress={() => void handleToggleJob(item.id)}
+                  loading={updatingJobId === item.id}
+                  variant="secondary"
+                  size="sm"
+                  icon={item.status === 'active' ? 'pause' : 'play'}
+                />
+                <Button
+                  label="Editar"
+                  onPress={() => handleOpenEditModal(item)}
+                  variant="tonal"
+                  size="sm"
+                  icon="create-outline"
+                />
               </View>
             </View>
           </View>
         )}
       />
 
-      {/* Modal de Publicar / Editar Vacante (HU-03) */}
-      <Modal
+      <Sheet
         visible={showFormModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowFormModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.tag}>HU-03 · Publicación de Vacante</Text>
-              <TouchableOpacity
-                onPress={() => setShowFormModal(false)}
-                style={styles.closeBtn}>
-                <Text style={styles.closeBtnText}>✕</Text>
-              </TouchableOpacity>
+        onClose={() => setShowFormModal(false)}
+        title={editingJob ? 'Editar vacante' : 'Nueva vacante'}
+        subtitle={blocked ? company.name : 'Información visible para los estudiantes'}
+        icon={editingJob ? 'create-outline' : 'briefcase-outline'}
+        closeLabel="Cerrar formulario de vacante"
+        footer={
+          blocked ? (
+            <Button
+              label="Entendido"
+              onPress={() => setShowFormModal(false)}
+              size="lg"
+              fullWidth
+            />
+          ) : (
+            <Button
+              label={isSaving ? 'Guardando…' : editingJob ? 'Guardar cambios' : 'Publicar vacante'}
+              onPress={() => void handleSaveJob()}
+              loading={isSaving}
+              size="lg"
+              iconRight="arrow-forward"
+              fullWidth
+            />
+          )
+        }>
+        {blocked ? (
+          <View style={styles.blockedWrap}>
+            <View style={styles.blockedIcon}>
+              <Icon name="lock-closed-outline" size={26} color={Brand.red} />
+            </View>
+            <Text style={styles.blockedTitle}>Publicación bloqueada</Text>
+            <Text style={styles.blockedText}>
+              Tu empresa está {STATUS_LABEL[company.status]}. Para garantizar la formalidad de las
+              ofertas, el administrador de UNIPAZ debe aprobar la cuenta antes de publicar.
+            </Text>
+            <Notice
+              tone="info"
+              message="Puedes completar tu perfil de empresa mientras la solicitud se revisa."
+            />
+          </View>
+        ) : (
+          <>
+            <TextField
+              label="Título de la vacante"
+              required
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Ej. Desarrollador Junior React Native"
+              maxLength={200}
+            />
+
+            <TextField
+              label="Descripción del cargo"
+              required
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Describe el rol y las responsabilidades principales."
+              multiline
+              maxLength={5000}
+              numberOfLines={4}
+            />
+
+            <TextField
+              label="Requisitos"
+              required
+              hint="Escribe un requisito por línea."
+              value={requirementsText}
+              onChangeText={setRequirementsText}
+              placeholder={'TypeScript básico\nDisponibilidad en las tardes'}
+              multiline
+              maxLength={3000}
+              numberOfLines={4}
+            />
+
+            <TextField
+              label="Responsabilidades"
+              required
+              value={responsibilities}
+              onChangeText={setResponsibilities}
+              placeholder="Funciones concretas del cargo"
+              multiline
+              maxLength={3000}
+              numberOfLines={3}
+            />
+
+            <View style={styles.row}>
+              <TextField
+                label="Área profesional"
+                required
+                value={area}
+                onChangeText={setArea}
+                placeholder="Tecnología"
+                maxLength={100}
+                containerStyle={styles.rowItem}
+              />
+              <TextField
+                label="Programas objetivo"
+                required
+                value={program}
+                onChangeText={setProgram}
+                placeholder="Ingeniería de Sistemas"
+                maxLength={120}
+                containerStyle={styles.rowItem}
+              />
             </View>
 
-            <Text style={styles.modalTitle}>
-              {editingJob ? 'Editar Vacante' : 'Nueva Vacante'}
-            </Text>
-
-            {company.status !== 'approved' && !editingJob ? (
-              // Criterio Escenario 2: Empresa pending bloqueada
-              <View style={styles.deniedBox}>
-                <Text style={styles.deniedTitle}>🚫 Publicación Bloqueada</Text>
-                <Text style={styles.deniedText}>
-                  Tu empresa se encuentra en estado &quot;{company.status}&quot;. Para garantizar la formalidad a los estudiantes de UNIPAZ, el administrador debe aprobar tu cuenta primero.
-                </Text>
-                <TouchableOpacity
-                  style={styles.closeDeniedBtn}
-                  onPress={() => setShowFormModal(false)}>
-                  <Text style={styles.closeDeniedText}>Entendido</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                style={{ maxHeight: 520 }}>
-                <View style={styles.formGroup}>
-                  <Text style={styles.inputLabel}>Título de la vacante *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ej. Desarrollador Junior React Native"
-                    maxLength={200}
-                    value={title}
-                    onChangeText={setTitle}
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.inputLabel}>Descripción del cargo *</Text>
-                  <TextInput
-                    style={[styles.input, { height: 70 }]}
-                    multiline
-                    placeholder="Detalla las responsabilidades principales..."
-                    maxLength={5000}
-                    value={description}
-                    onChangeText={setDescription}
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.inputLabel}>Requisitos (uno por línea) *</Text>
-                  <TextInput
-                    style={[styles.input, { height: 60 }]}
-                    multiline
-                    placeholder="TypeScript básico&#10;Disponibilidad en las tardes"
-                    maxLength={3000}
-                    value={requirementsText}
-                    onChangeText={setRequirementsText}
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.inputLabel}>Responsabilidades *</Text>
-                  <TextInput
-                    style={[styles.input, styles.multilineInput]}
-                    multiline
-                    maxLength={3000}
-                    placeholder="Describe las funciones del cargo"
-                    value={responsibilities}
-                    onChangeText={setResponsibilities}
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.inputLabel}>Área profesional *</Text>
-                  <TextInput
-                    style={styles.input}
-                    maxLength={100}
-                    placeholder="Tecnología, logística, producción..."
-                    value={area}
-                    onChangeText={setArea}
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.inputLabel}>Programas objetivo *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ingeniería Informática"
-                    value={program}
-                    onChangeText={setProgram}
-                  />
-                </View>
-
-                <ChoiceRow
-                  label="Modalidad"
-                  value={modality}
-                  options={JOB_MODALITIES}
-                  onChange={setModality}
+            <ChoiceField label="Modalidad">
+              {JOB_MODALITIES.map((option) => (
+                <Chip
+                  key={option}
+                  label={option}
+                  tone="green"
+                  selected={modality === option}
+                  onPress={() => setModality(option)}
                 />
-                <ChoiceRow
-                  label="Tipo de contrato"
-                  value={contractType}
-                  options={CONTRACT_TYPES}
-                  onChange={setContractType}
+              ))}
+            </ChoiceField>
+
+            <ChoiceField label="Tipo de contrato">
+              {CONTRACT_TYPES.map((option) => (
+                <Chip
+                  key={option}
+                  label={option}
+                  tone="green"
+                  selected={contractType === option}
+                  onPress={() => setContractType(option)}
                 />
+              ))}
+            </ChoiceField>
 
-                <View style={styles.rowFields}>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Fecha límite (AAAA-MM-DD) *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={deadline}
-                      onChangeText={setDeadline}
-                      placeholder="AAAA-MM-DD"
-                      maxLength={10}
-                    />
-                  </View>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Ubicación *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={location}
-                      onChangeText={setLocation}
-                      placeholder="Barrancabermeja"
-                    />
-                  </View>
-                </View>
+            <View style={styles.row}>
+              <TextField
+                label="Fecha límite"
+                required
+                hint="AAAA-MM-DD"
+                value={deadline}
+                onChangeText={setDeadline}
+                placeholder="2026-12-31"
+                maxLength={10}
+                containerStyle={styles.rowItem}
+              />
+              <TextField
+                label="Ubicación"
+                required
+                value={location}
+                onChangeText={setLocation}
+                placeholder="Barrancabermeja"
+                maxLength={120}
+                containerStyle={styles.rowItem}
+              />
+            </View>
 
-                <View style={styles.rowFields}>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Horario</Text>
-                    <TextInput
-                      style={styles.input}
-                      maxLength={100}
-                      placeholder="Lunes a viernes, 8:00 a 17:00"
-                      value={schedule}
-                      onChangeText={setSchedule}
-                    />
-                  </View>
-                  <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={styles.inputLabel}>Vacantes disponibles *</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      maxLength={4}
-                      value={positions}
-                      onChangeText={setPositions}
-                    />
-                  </View>
-                </View>
+            <View style={styles.row}>
+              <TextField
+                label="Horario"
+                optionalLabel="Opcional"
+                value={schedule}
+                onChangeText={setSchedule}
+                placeholder="Lunes a viernes, 8:00 a 17:00"
+                maxLength={100}
+                containerStyle={styles.rowItem}
+              />
+              <TextField
+                label="Vacantes"
+                required
+                value={positions}
+                onChangeText={setPositions}
+                keyboardType="number-pad"
+                maxLength={4}
+                containerStyle={styles.rowItemNarrow}
+              />
+            </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.inputLabel}>Salario o rango (opcional)</Text>
-                  <TextInput
-                    style={styles.input}
-                    maxLength={100}
-                    placeholder="Ej. $2.000.000 COP o A convenir"
-                    value={salaryRange}
-                    onChangeText={setSalaryRange}
-                  />
-                </View>
+            <TextField
+              label="Salario o rango"
+              optionalLabel="Opcional"
+              value={salaryRange}
+              onChangeText={setSalaryRange}
+              placeholder="Ej. $2.000.000 COP o A convenir"
+              maxLength={100}
+            />
 
-                <View style={styles.switchRow}>
-                  <Text style={styles.inputLabel}>Salario negociable</Text>
-                  <Switch
-                    accessibilityLabel="Salario negociable"
-                    value={salaryNegotiable}
-                    onValueChange={setSalaryNegotiable}
-                    trackColor={{ false: '#D1D5DB', true: '#34D399' }}
-                    thumbColor={salaryNegotiable ? '#007832' : '#FFFFFF'}
-                  />
-                </View>
-                <View style={styles.switchRow}>
-                  <Text style={styles.inputLabel}>Requiere hoja de vida</Text>
-                  <Switch
-                    accessibilityLabel="Requiere hoja de vida"
-                    value={requiresCv}
-                    onValueChange={setRequiresCv}
-                    trackColor={{ false: '#D1D5DB', true: '#34D399' }}
-                    thumbColor={requiresCv ? '#007832' : '#FFFFFF'}
-                  />
-                </View>
+            <View style={styles.switches}>
+              <SwitchRow
+                label="Salario negociable"
+                icon="cash-outline"
+                value={salaryNegotiable}
+                onValueChange={setSalaryNegotiable}
+              />
+              <SwitchRow
+                label="Requiere hoja de vida"
+                icon="document-text-outline"
+                value={requiresCv}
+                onValueChange={setRequiresCv}
+              />
+            </View>
 
-                {formError && (
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>⚠️ {formError}</Text>
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.saveBtn, isSaving && styles.disabledButton]}
-                  disabled={isSaving}
-                  onPress={() => void handleSaveJob()}>
-                  <Text style={styles.saveBtnText}>
-                    {isSaving ? 'Guardando…' : editingJob ? 'Guardar cambios' : 'Publicar vacante'}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+            {formError ? (
+              <Notice tone="error" message={formError} onDismiss={() => setFormError(null)} />
+            ) : null}
+          </>
+        )}
+      </Sheet>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 960,
-    alignSelf: 'center',
-    backgroundColor: '#F4F5F7',
-  },
-  topBar: {
-    width: '100%',
-    maxWidth: 920,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  topBarCopy: { flex: 1, minWidth: 190 },
-  heading: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#1A1F36',
-  },
-  subheading: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  newJobBtn: {
-    backgroundColor: '#00963F',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 10,
-  },
-  newJobBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  listContent: {
-    width: '100%',
-    maxWidth: 920,
-    alignSelf: 'center',
-    padding: 16,
-    paddingBottom: 40,
-    gap: 12,
-  },
-  jobCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  jobCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  jobTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1F36',
-  },
-  jobMeta: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  jobDescription: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  salaryLabel: {
-    color: '#007832',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-  jobFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#F4F5F7',
-    paddingTop: 10,
-  },
-  deadlineLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  toggleBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#F4F5F7',
-    borderRadius: 8,
-  },
-  toggleBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  editBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#E0F2FE',
-    borderRadius: 8,
-  },
-  editBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#0369A1',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 700,
-    maxHeight: '90%',
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  tag: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#00963F',
-    backgroundColor: '#E6F7ED',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  closeBtn: {
-    padding: 6,
-  },
-  closeBtnText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    fontWeight: '700',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1A1F36',
-    marginTop: 6,
-    marginBottom: 12,
-  },
-  formGroup: {
-    marginBottom: 10,
-  },
-  rowFields: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  choiceGroup: {
-    marginBottom: 10,
-  },
-  choices: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  choice: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  choiceActive: {
-    borderColor: '#00963F',
-    backgroundColor: '#E6F7ED',
-  },
-  choiceText: {
-    color: '#6B7280',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  choiceTextActive: {
-    color: '#007832',
-  },
-  switchRow: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  input: {
-    backgroundColor: '#F4F5F7',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#1A1F36',
-  },
-  multilineInput: {
-    minHeight: 72,
-    textAlignVertical: 'top',
-  },
-  saveBtn: {
-    backgroundColor: '#00963F',
-    paddingVertical: 13,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  actionError: {
-    color: '#991B1B',
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    fontSize: 11,
-  },
-  errorBox: {
-    backgroundColor: '#FEF2F2',
-    padding: 8,
-    borderRadius: 8,
-    marginVertical: 6,
-  },
-  errorText: {
-    color: '#B91C1C',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  deniedBox: {
-    backgroundColor: '#FEF2F2',
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    alignItems: 'center',
-  },
-  deniedTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#991B1B',
-    marginBottom: 6,
-  },
-  deniedText: {
-    fontSize: 13,
-    color: '#7F1D1D',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 14,
-  },
-  closeDeniedBtn: {
-    backgroundColor: '#B91C1C',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  closeDeniedText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-});
-
-interface ChoiceRowProps<Value extends string> {
-  label: string;
-  value: Value;
-  options: Value[];
-  onChange: (value: Value) => void;
+function MetaTag({ icon, label }: { icon: React.ComponentProps<typeof Icon>['name']; label: string }) {
+  return (
+    <View style={styles.metaTag}>
+      <Icon name={icon} size={12} color={Brand.slateSoft} />
+      <Text style={styles.metaTagText} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
 }
 
-function ChoiceRow<Value extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: ChoiceRowProps<Value>) {
+function ChoiceField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <View style={styles.choiceGroup}>
-      <Text style={styles.inputLabel}>{label} *</Text>
-      <View style={styles.choices}>
-        {options.map((option) => {
-          const isSelected = option === value;
-          return (
-            <TouchableOpacity
-              key={option}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
-              onPress={() => onChange(option)}
-              style={[styles.choice, isSelected && styles.choiceActive]}>
-              <Text style={[styles.choiceText, isSelected && styles.choiceTextActive]}>
-                {option}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+    <View style={styles.choiceField}>
+      <Text style={styles.choiceLabel}>{label}</Text>
+      <View style={styles.choices}>{children}</View>
+    </View>
+  );
+}
+
+function SwitchRow({
+  label,
+  icon,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  icon: React.ComponentProps<typeof Icon>['name'];
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  return (
+    <View style={styles.switchRow}>
+      <View style={styles.switchLabel}>
+        <Icon name={icon} size={17} color={Brand.slateSoft} />
+        <Text style={styles.switchText}>{label}</Text>
       </View>
+      <Switch
+        accessibilityLabel={label}
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: Brand.lineStrong, true: Brand.greenTintStrong }}
+        thumbColor={value ? Brand.greenDark : Brand.surface}
+        ios_backgroundColor={Brand.lineStrong}
+      />
     </View>
   );
 }
@@ -850,3 +563,179 @@ function isFutureDate(value: string): boolean {
   today.setHours(0, 0, 0, 0);
   return date > today;
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: Brand.canvas,
+  },
+  list: {
+    flex: 1,
+    width: '100%',
+  },
+  listContent: {
+    width: '100%',
+    maxWidth: 920,
+    alignSelf: 'center',
+    padding: Space.lg,
+    paddingBottom: Space.huge,
+    gap: Space.md,
+  },
+  header: {
+    gap: Space.md,
+    marginBottom: Space.xs,
+  },
+  card: {
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    padding: Space.lg,
+    gap: Space.md,
+    ...Shadows.card,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  cardTopCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  jobTitle: {
+    ...Type.heading,
+    color: Brand.ink,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  metaTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.sm,
+    backgroundColor: Brand.surfaceMuted,
+    maxWidth: '100%',
+  },
+  metaTagText: {
+    ...Type.caption,
+    fontSize: 10.5,
+    color: Brand.slate,
+    flexShrink: 1,
+  },
+  description: {
+    ...Type.body,
+    color: Brand.slate,
+  },
+  salaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  salaryLabel: {
+    ...Type.label,
+    color: Brand.greenDark,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Space.sm,
+    borderTopWidth: 1,
+    borderTopColor: Brand.lineSoft,
+    paddingTop: Space.md,
+  },
+  deadline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flexShrink: 1,
+  },
+  deadlineText: {
+    ...Type.caption,
+    fontSize: 11,
+    color: Brand.slate,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: Space.md,
+  },
+  rowItem: {
+    flex: 1,
+  },
+  rowItemNarrow: {
+    flex: 0.55,
+  },
+  choiceField: {
+    gap: 8,
+  },
+  choiceLabel: {
+    ...Type.label,
+    color: Brand.inkSoft,
+  },
+  choices: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  switches: {
+    borderWidth: 1,
+    borderColor: Brand.line,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.surfaceMuted,
+    paddingHorizontal: Space.md,
+  },
+  switchRow: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Brand.lineSoft,
+  },
+  switchLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  switchText: {
+    ...Type.body,
+    color: Brand.inkSoft,
+  },
+  blockedWrap: {
+    alignItems: 'center',
+    gap: Space.md,
+    paddingVertical: Space.md,
+  },
+  blockedIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: Radius.xl,
+    backgroundColor: Brand.redTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blockedTitle: {
+    ...Type.titleSmall,
+    color: Brand.ink,
+  },
+  blockedText: {
+    ...Type.body,
+    color: Brand.slate,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+});

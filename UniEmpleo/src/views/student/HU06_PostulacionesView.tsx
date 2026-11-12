@@ -1,19 +1,45 @@
 import React, { useState } from 'react';
-import {
-  FlatList,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Application } from '@/data/mock-data';
+import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Sheet } from '@/components/ui/sheet';
+import { Notice } from '@/components/ui/notice';
+import { InfoRow } from '@/components/ui/info-row';
+import { ProgressSteps, ProgressStep } from '@/components/ui/progress-steps';
+import { Avatar } from '@/components/ui/avatar';
+import { Icon } from '@/components/ui/icon';
+import { SectionHeader } from '@/components/ui/section-header';
 
 interface PostulacionesViewProps {
   applications: Application[];
   onRefresh?: () => void;
+}
+
+const PROGRESS_STEPS: ProgressStep[] = [
+  { key: 'sent', label: 'Postulación enviada', description: 'La empresa recibió tu hoja de vida.' },
+  { key: 'review', label: 'En revisión', description: 'Tu perfil está siendo evaluado.' },
+  { key: 'interview', label: 'Entrevista', description: 'Coordinación de la cita con la empresa.' },
+  { key: 'result', label: 'Decisión final', description: 'Resultado del proceso de selección.' },
+];
+
+function getProgressIndex(status: Application['status']): number {
+  switch (status) {
+    case 'pending':
+      return 0;
+    case 'reviewed':
+      return 1;
+    case 'interview':
+      return 2;
+    case 'accepted':
+      return 3;
+    case 'rejected':
+      return 2;
+    default:
+      return 0;
+  }
 }
 
 export const HU06_PostulacionesView: React.FC<PostulacionesViewProps> = ({
@@ -28,32 +54,46 @@ export const HU06_PostulacionesView: React.FC<PostulacionesViewProps> = ({
       case 'reviewed':
         return 'La empresa ha revisado tu hoja de vida y tu perfil está siendo evaluado activamente.';
       case 'interview':
-        return '¡Felicitaciones! Has sido seleccionado para una entrevista. Revisa las instrucciones de contacto.';
+        return 'Has sido seleccionado para una entrevista. Revisa las instrucciones de contacto.';
       case 'accepted':
-        return '¡Proceso exitoso! La empresa ha aceptado tu postulación para iniciar la vinculación.';
+        return 'Proceso exitoso. La empresa ha aceptado tu postulación para iniciar la vinculación.';
       case 'rejected':
-        return 'El proceso para esta vacante ha concluido y no continuaste a la siguiente fase. ¡Sigue postulándote a otras ofertas!';
+        return 'El proceso para esta vacante ha concluido y no continuaste a la siguiente fase. Sigue postulándote a otras ofertas.';
     }
   };
 
+  const inReview = applications.filter(
+    (app) => app.status === 'pending' || app.status === 'reviewed',
+  ).length;
+  const interviews = applications.filter((app) => app.status === 'interview').length;
+
   return (
     <View style={styles.container}>
-      <View style={styles.headerInfo}>
-        <Text style={styles.headerTitle}>Mis Postulaciones</Text>
-        <Text style={styles.headerSubtitle}>
-          Monitorea en tiempo real el avance de tus postulaciones laborales
-        </Text>
-      </View>
-
       <FlatList
+        style={styles.list}
         data={applications}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <SectionHeader
+              overline="Seguimiento"
+              title="Mis postulaciones"
+              subtitle="Consulta el avance de cada proceso en tiempo real."
+            />
+            <View style={styles.statsRow}>
+              <StatTile label="Total" value={applications.length} icon="documents-outline" />
+              <StatTile label="En revisión" value={inReview} icon="eye-outline" />
+              <StatTile label="Entrevistas" value={interviews} icon="calendar-outline" />
+            </View>
+          </View>
+        }
         ListEmptyComponent={
           <EmptyState
-            icon="📭"
-            title="Sin postulaciones aún"
-            description="Explora las ofertas disponibles en la pestaña 'Vacantes' y postúlate con tu hoja de vida."
+            icon="document-text-outline"
+            title="Aún no tienes postulaciones"
+            description="Explora las vacantes disponibles en la pestaña Vacantes y postúlate con tu hoja de vida."
           />
         }
         renderItem={({ item }) => {
@@ -61,352 +101,357 @@ export const HU06_PostulacionesView: React.FC<PostulacionesViewProps> = ({
           const isAccepted = item.status === 'accepted';
 
           return (
-            <TouchableOpacity
-              style={[
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Postulación a ${item.jobTitle} en ${item.companyName}`}
+              onPress={() => setSelectedApp(item)}
+              style={({ pressed }) => [
                 styles.card,
-                isInterview && styles.cardHighlightInterview,
-                isAccepted && styles.cardHighlightAccepted,
-              ]}
-              activeOpacity={0.85}
-              onPress={() => setSelectedApp(item)}>
+                isInterview && styles.cardInterview,
+                isAccepted && styles.cardAccepted,
+                pressed && styles.cardPressed,
+              ]}>
               <View style={styles.cardTopRow}>
-                <Text style={styles.companyName}>{item.companyName}</Text>
-                <StatusBadge status={item.status} />
+                <View style={styles.cardCompany}>
+                  <Avatar name={item.companyName} size={38} tone="navy" />
+                  <View style={styles.cardCompanyCopy}>
+                    <Text style={styles.companyName} numberOfLines={1}>
+                      {item.companyName}
+                    </Text>
+                    <Text style={styles.jobTitle} numberOfLines={2}>
+                      {item.jobTitle}
+                    </Text>
+                  </View>
+                </View>
+                <StatusBadge status={item.status} size="small" />
               </View>
 
-              <Text style={styles.jobTitle}>{item.jobTitle}</Text>
-
-              {/* Alerta de entrevista destacada (Criterio Escenario 3) */}
-              {isInterview && (
-                <View style={styles.interviewAlertBox}>
-                  <Text style={styles.interviewAlertTitle}>
-                    🎉 ¡Citación a Entrevista!
-                  </Text>
-                  <Text style={styles.interviewAlertText}>
-                    {item.interviewNote || 'Has sido programado para entrevista. Revisa los detalles.'}
-                  </Text>
+              {isInterview ? (
+                <View style={styles.interviewBox}>
+                  <Icon name="calendar" size={16} color="#3B3F94" />
+                  <View style={styles.interviewCopy}>
+                    <Text style={styles.interviewTitle}>Citación a entrevista</Text>
+                    <Text style={styles.interviewText} numberOfLines={2}>
+                      {item.interviewNote || 'Has sido programado para entrevista. Revisa los detalles.'}
+                    </Text>
+                  </View>
                 </View>
-              )}
+              ) : null}
 
               <View style={styles.cardFooter}>
-                <Text style={styles.metaText}>📅 Postulado: {item.appliedAt}</Text>
-                <Text style={styles.metaCv}>📎 {item.cvFileName}</Text>
+                <View style={styles.footerMeta}>
+                  <Icon name="calendar-outline" size={13} color={Brand.slateSoft} />
+                  <Text style={styles.metaText}>Postulado el {item.appliedAt}</Text>
+                </View>
+                <View style={styles.footerMeta}>
+                  <Icon name="document-attach-outline" size={13} color={Brand.greenDark} />
+                  <Text style={styles.metaCv} numberOfLines={1}>
+                    {item.cvFileName}
+                  </Text>
+                </View>
               </View>
-            </TouchableOpacity>
+            </Pressable>
           );
         }}
       />
 
-      {/* Modal de Detalle de Postulación (Criterio HU-06 Escenario 6: company_notes oculto) */}
-      <Modal
+      <Sheet
         visible={selectedApp !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedApp(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            {selectedApp && (
-              <>
-                <View style={styles.modalTopRow}>
-                  <Text style={styles.tag}>HU-06 · Detalle de Postulación</Text>
-                  <TouchableOpacity
-                    onPress={() => setSelectedApp(null)}
-                    style={styles.closeBtn}>
-                    <Text style={styles.closeBtnText}>✕</Text>
-                  </TouchableOpacity>
+        onClose={() => setSelectedApp(null)}
+        title={selectedApp?.jobTitle}
+        subtitle={selectedApp?.companyName}
+        icon="document-text-outline"
+        closeLabel="Cerrar detalle de postulación"
+        footer={
+          <Button
+            label="Entendido"
+            onPress={() => setSelectedApp(null)}
+            size="lg"
+            fullWidth
+          />
+        }>
+        {selectedApp ? (
+          <>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Estado actual</Text>
+              <StatusBadge status={selectedApp.status} />
+            </View>
+
+            <Notice
+              tone={selectedApp.status === 'rejected' ? 'warning' : selectedApp.status === 'accepted' ? 'success' : 'info'}
+              message={getStatusExplanation(selectedApp.status) ?? ''}
+            />
+
+            <View style={styles.progressCard}>
+              <ProgressSteps
+                steps={PROGRESS_STEPS}
+                currentIndex={getProgressIndex(selectedApp.status)}
+                failed={selectedApp.status === 'rejected'}
+              />
+            </View>
+
+            {selectedApp.status === 'interview' && selectedApp.interviewNote ? (
+              <View style={styles.interviewDetails}>
+                <View style={styles.interviewDetailsHeader}>
+                  <Icon name="calendar" size={16} color="#3B3F94" />
+                  <Text style={styles.interviewDetailsTitle}>Detalles de la cita</Text>
                 </View>
+                <Text style={styles.interviewDetailsBody}>{selectedApp.interviewNote}</Text>
+              </View>
+            ) : null}
 
-                <Text style={styles.modalJobTitle}>{selectedApp.jobTitle}</Text>
-                <Text style={styles.modalCompany}>{selectedApp.companyName}</Text>
+            <View style={styles.infoCard}>
+              <InfoRow
+                icon="calendar-outline"
+                label="Fecha de postulación"
+                value={selectedApp.appliedAt}
+              />
+              <InfoRow
+                icon="document-attach-outline"
+                label="Hoja de vida adjunta"
+                value={selectedApp.cvFileName}
+                last
+              />
+            </View>
 
-                <View style={styles.statusBox}>
-                  <Text style={styles.statusBoxLabel}>Estado actual:</Text>
-                  <StatusBadge status={selectedApp.status} />
-                </View>
-
-                <View style={styles.explanationBox}>
-                  <Text style={styles.explanationText}>
-                    {getStatusExplanation(selectedApp.status)}
-                  </Text>
-                </View>
-
-                {selectedApp.status === 'interview' && selectedApp.interviewNote && (
-                  <View style={styles.interviewDetailsCard}>
-                    <Text style={styles.interviewTitle}>Detalles de la cita:</Text>
-                    <Text style={styles.interviewBody}>{selectedApp.interviewNote}</Text>
-                  </View>
-                )}
-
-                <View style={styles.detailsList}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Fecha de postulación:</Text>
-                    <Text style={styles.detailValue}>{selectedApp.appliedAt}</Text>
-                  </View>
-
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Hoja de vida adjunta:</Text>
-                    <Text style={styles.detailValue}>{selectedApp.cvFileName}</Text>
-                  </View>
-
-                  {/* Garantía del criterio HU-06 Escenario 6 */}
-                  <View style={styles.privacyNotice}>
-                    <Text style={styles.privacyNoticeText}>
-                      🔒 Privacidad: Las notas y evaluaciones internas de la empresa no son visibles para el estudiante conforme a la política de selección.
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.closeActionBtn}
-                  onPress={() => setSelectedApp(null)}>
-                  <Text style={styles.closeActionText}>Entendido</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
+            <View style={styles.privacy}>
+              <Icon name="lock-closed-outline" size={15} color={Brand.slate} />
+              <Text style={styles.privacyText}>
+                Las notas y evaluaciones internas de la empresa no son visibles para el
+                estudiante, conforme a la política de selección.
+              </Text>
+            </View>
+          </>
+        ) : null}
+      </Sheet>
     </View>
   );
 };
+
+function StatTile({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: number;
+  icon: 'documents-outline' | 'eye-outline' | 'calendar-outline';
+}) {
+  return (
+    <View style={styles.statTile}>
+      <Icon name={icon} size={16} color={Brand.greenDark} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    maxWidth: 960,
-    alignSelf: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: Brand.canvas,
   },
-  headerInfo: {
+  list: {
+    flex: 1,
     width: '100%',
-    maxWidth: 840,
-    alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1A1F36',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
   },
   listContent: {
     width: '100%',
     maxWidth: 840,
     alignSelf: 'center',
-    padding: 16,
-    paddingBottom: 40,
-    gap: 12,
+    padding: Space.lg,
+    paddingBottom: Space.huge,
+    gap: Space.md,
+  },
+  header: {
+    gap: Space.md,
+    marginBottom: Space.xs,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statTile: {
+    flex: 1,
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    paddingVertical: Space.md,
+    paddingHorizontal: Space.sm,
+    alignItems: 'center',
+    gap: 3,
+    ...Shadows.card,
+  },
+  statValue: {
+    ...Type.titleSmall,
+    fontSize: 20,
+    color: Brand.ink,
+  },
+  statLabel: {
+    ...Type.caption,
+    fontSize: 10,
+    color: Brand.slate,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xl,
+    padding: Space.lg,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: Brand.line,
+    gap: Space.md,
+    ...Shadows.card,
   },
-  cardHighlightInterview: {
-    borderColor: '#C4B5FD',
-    backgroundColor: '#FAF5FF',
+  cardInterview: {
+    borderColor: '#D5D9F7',
+    backgroundColor: '#FBFCFF',
   },
-  cardHighlightAccepted: {
-    borderColor: '#34D399',
-    backgroundColor: '#E6F7ED',
+  cardAccepted: {
+    borderColor: Brand.greenLine,
+    backgroundColor: '#F6FCF8',
+  },
+  cardPressed: {
+    opacity: 0.9,
   },
   cardTopRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: 10,
+  },
+  cardCompany: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    gap: 10,
+    flex: 1,
+  },
+  cardCompanyCopy: {
+    flex: 1,
+    gap: 2,
   },
   companyName: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    ...Type.overline,
+    fontSize: 9,
+    color: Brand.slateSoft,
   },
   jobTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1F36',
-    marginBottom: 8,
+    ...Type.heading,
+    color: Brand.ink,
   },
-  interviewAlertBox: {
-    backgroundColor: '#EDE9FE',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 10,
+  interviewBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 9,
+    padding: Space.md,
+    backgroundColor: '#EEF0FD',
     borderWidth: 1,
-    borderColor: '#DDD6FE',
+    borderColor: '#D5D9F7',
+    borderRadius: Radius.md,
   },
-  interviewAlertTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#5B21B6',
-    marginBottom: 2,
+  interviewCopy: {
+    flex: 1,
+    gap: 1,
   },
-  interviewAlertText: {
-    fontSize: 12,
-    color: '#6D28D9',
+  interviewTitle: {
+    ...Type.label,
+    color: '#3B3F94',
+    fontWeight: '800',
+  },
+  interviewText: {
+    ...Type.caption,
+    color: '#4A4F9E',
   },
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F4F5F7',
-    paddingTop: 8,
+    borderTopColor: Brand.lineSoft,
+    paddingTop: 10,
+  },
+  footerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   metaText: {
+    ...Type.caption,
     fontSize: 11,
-    color: '#6B7280',
+    color: Brand.slate,
   },
   metaCv: {
+    ...Type.caption,
     fontSize: 11,
-    color: '#00963F',
+    color: Brand.greenDark,
     fontWeight: '600',
+    flexShrink: 1,
+    maxWidth: 190,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    width: '100%',
-    maxWidth: 520,
-    maxHeight: '90%',
-  },
-  modalTopRow: {
+  statusRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    gap: 10,
   },
-  tag: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#00963F',
-    backgroundColor: '#E6F7ED',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+  statusLabel: {
+    ...Type.caption,
+    color: Brand.slate,
   },
-  closeBtn: {
-    padding: 6,
+  progressCard: {
+    backgroundColor: Brand.surfaceMuted,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Brand.lineSoft,
+    padding: Space.lg,
   },
-  closeBtnText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    fontWeight: '700',
+  interviewDetails: {
+    backgroundColor: '#EEF0FD',
+    borderWidth: 1,
+    borderColor: '#D5D9F7',
+    borderRadius: Radius.lg,
+    padding: Space.md,
+    gap: 6,
   },
-  modalJobTitle: {
-    fontSize: 18,
+  interviewDetailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  interviewDetailsTitle: {
+    ...Type.label,
+    color: '#3B3F94',
     fontWeight: '800',
-    color: '#1A1F36',
-    marginTop: 4,
   },
-  modalCompany: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '600',
-    marginBottom: 14,
+  interviewDetailsBody: {
+    ...Type.body,
+    color: '#4A4F9E',
   },
-  statusBox: {
+  infoCard: {
+    backgroundColor: Brand.surfaceMuted,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Brand.lineSoft,
+    paddingHorizontal: Space.md,
+  },
+  privacy: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
-    marginBottom: 10,
+    padding: Space.md,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.surfaceMuted,
   },
-  statusBoxLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  explanationBox: {
-    backgroundColor: '#F4F5F7',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  explanationText: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
-  },
-  interviewDetailsCard: {
-    backgroundColor: '#EDE9FE',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#DDD6FE',
-  },
-  interviewTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#5B21B6',
-    marginBottom: 4,
-  },
-  interviewBody: {
-    fontSize: 12,
-    color: '#4C1D95',
+  privacyText: {
+    ...Type.caption,
+    color: Brand.slate,
+    flex: 1,
     lineHeight: 17,
-  },
-  detailsList: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  detailValue: {
-    fontSize: 12,
-    color: '#1A1F36',
-    fontWeight: '600',
-  },
-  privacyNotice: {
-    marginTop: 6,
-    backgroundColor: '#F4F5F7',
-    padding: 8,
-    borderRadius: 8,
-  },
-  privacyNoticeText: {
-    fontSize: 10,
-    color: '#6B7280',
-    fontStyle: 'italic',
-  },
-  closeActionBtn: {
-    backgroundColor: '#00963F',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  closeActionText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
   },
 });

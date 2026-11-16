@@ -120,7 +120,9 @@ Estudiantes usan autenticación Google y empresas/administradores usan correo y 
 
 ### Registro de empresa
 
-Registrar empresas mediante `POST /api/v1/auth/register/company`. Solicitar responsable, correo, contraseña y confirmación, razón social, sector, contacto, teléfono, dirección y descripción; NIT es opcional. Mostrar el estado pendiente y no habilitar publicación hasta que el servidor apruebe la empresa.
+Registrar empresas mediante `POST /api/v1/auth/register/company`. Solicitar solo razón social, nombre del responsable, NIT, correo corporativo, contraseña y confirmación. Mostrar el estado pendiente y no habilitar publicación hasta que el servidor apruebe la empresa.
+
+Tras iniciar sesión, el panel de la empresa muestra un aviso persistente para completar el registro. Los datos institucionales restantes (sector, persona de contacto, teléfono, dirección y descripción) se envían con `PUT /api/v1/companies/profile` desde el diálogo “Completa el registro”. Si la empresa ya está aprobada y aún tiene datos pendientes, al pulsar “Publicar vacante” se abre ese mismo diálogo y, al guardar, continúa al formulario de la vacante.
 
 ### Registro de estudiantes y administración
 

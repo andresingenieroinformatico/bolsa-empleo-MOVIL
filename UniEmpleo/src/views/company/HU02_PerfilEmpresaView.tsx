@@ -24,6 +24,9 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
   const [name, setName] = useState(company.name);
   const [nit, setNit] = useState(company.nit === 'No especificado' ? '' : company.nit);
   const [sector, setSector] = useState(company.sector === 'No especificado' ? '' : company.sector);
+  const [contactPerson, setContactPerson] = useState(company.contactPerson || '');
+  const [phone, setPhone] = useState(company.phone || '');
+  const [address, setAddress] = useState(company.address || '');
   const [description, setDescription] = useState(company.description);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -33,6 +36,9 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
     setName(company.name);
     setNit(company.nit === 'No especificado' ? '' : company.nit);
     setSector(company.sector === 'No especificado' ? '' : company.sector);
+    setContactPerson(company.contactPerson || '');
+    setPhone(company.phone || '');
+    setAddress(company.address || '');
     setDescription(company.description);
     setIsEditing(true);
   };
@@ -44,15 +50,27 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
   };
 
   const handleSave = async () => {
+    const trimmedNit = nit.trim();
     const updated: CompanyProfile = {
       ...company,
       name: name.trim(),
-      nit: nit.trim() || 'No especificado',
+      nit: trimmedNit || 'No especificado',
       sector: sector.trim(),
+      contactPerson: contactPerson.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
       description: description.trim(),
     };
-    if (!updated.name || !updated.sector || !updated.description) {
-      setError('Completa el nombre, el sector y la descripción para guardar.');
+    if (
+      !trimmedNit ||
+      !updated.name ||
+      !updated.sector ||
+      !updated.contactPerson ||
+      !updated.phone ||
+      !updated.address ||
+      !updated.description
+    ) {
+      setError('Completa todos los datos institucionales para guardar.');
       return;
     }
 
@@ -121,6 +139,21 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
           <InfoRow icon="business-outline" label="Razón social" value={company.name} />
           <InfoRow icon="card-outline" label="NIT" value={company.nit} />
           <InfoRow icon="layers-outline" label="Sector" value={company.sector} />
+          <InfoRow
+            icon="person-outline"
+            label="Responsable"
+            value={company.contactPerson || 'Sin registrar'}
+          />
+          <InfoRow
+            icon="call-outline"
+            label="Teléfono"
+            value={company.phone || 'Sin registrar'}
+          />
+          <InfoRow
+            icon="location-outline"
+            label="Dirección"
+            value={company.address || 'Sin registrar'}
+          />
           <InfoRow icon="mail-outline" label="Correo" value={company.email} />
           <InfoRow icon="document-text-outline" label="Descripción" value={company.description} last muted />
         </View>
@@ -154,10 +187,11 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
         />
         <TextField
           label="NIT"
-          optionalLabel="Opcional"
+          required
           value={nit}
           onChangeText={setNit}
           maxLength={20}
+          keyboardType="numbers-and-punctuation"
           icon="card-outline"
         />
         <TextField
@@ -168,6 +202,35 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
           maxLength={100}
           placeholder="Tecnología, agroindustria, logística…"
           icon="layers-outline"
+        />
+        <TextField
+          label="Nombre del responsable"
+          required
+          value={contactPerson}
+          onChangeText={setContactPerson}
+          maxLength={255}
+          placeholder="Persona responsable ante UNIPAZ"
+          autoCapitalize="words"
+          icon="person-outline"
+        />
+        <TextField
+          label="Teléfono de contacto"
+          required
+          value={phone}
+          onChangeText={setPhone}
+          maxLength={20}
+          placeholder="+57 300 000 0000"
+          keyboardType="phone-pad"
+          icon="call-outline"
+        />
+        <TextField
+          label="Dirección"
+          required
+          value={address}
+          onChangeText={setAddress}
+          maxLength={255}
+          placeholder="Dirección de la empresa"
+          icon="location-outline"
         />
         <TextField
           label="Descripción"

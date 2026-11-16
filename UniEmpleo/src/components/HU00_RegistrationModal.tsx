@@ -35,11 +35,6 @@ export function HU00_RegistrationModal({
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [nit, setNit] = useState('');
-  const [sector, setSector] = useState('');
-  const [contactPerson, setContactPerson] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [googleErrorMessage, setGoogleErrorMessage] = useState<string | null>(null);
@@ -47,18 +42,12 @@ export function HU00_RegistrationModal({
 
   const handleRegisterCompany = async () => {
     setErrorMessage(null);
-    if (
-      !name.trim() ||
-      !email.trim() ||
-      !companyName.trim() ||
-      !sector.trim() ||
-      !contactPerson.trim() ||
-      !phone.trim() ||
-      !address.trim() ||
-      !description.trim() ||
-      !password
-    ) {
+    if (!name.trim() || !email.trim() || !companyName.trim() || !nit.trim() || !password) {
       setErrorMessage('Completa los campos obligatorios para continuar.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrorMessage('Escribe un correo corporativo válido.');
       return;
     }
     if (password.length < 8) {
@@ -67,10 +56,6 @@ export function HU00_RegistrationModal({
     }
     if (password !== passwordConfirmation) {
       setErrorMessage('Las contraseñas no coinciden.');
-      return;
-    }
-    if (description.trim().length < 10) {
-      setErrorMessage('La descripción debe tener al menos 10 caracteres.');
       return;
     }
 
@@ -82,12 +67,8 @@ export function HU00_RegistrationModal({
         password,
         password_confirmation: passwordConfirmation,
         company_name: companyName.trim(),
-        nit: nit.trim() || undefined,
-        sector: sector.trim(),
-        contact_person: contactPerson.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        description: description.trim(),
+        nit: nit.trim(),
+        contact_person: name.trim(),
       });
       setRegistered(true);
     } catch (error) {
@@ -151,7 +132,7 @@ export function HU00_RegistrationModal({
           <Notice
             tone="success"
             title="Solicitud enviada"
-            message="La empresa quedó registrada para revisión institucional. Podrás iniciar sesión cuando tu cuenta sea habilitada."
+            message="La empresa quedó registrada para revisión institucional. Inicia sesión para completar el resto de los datos."
           />
           <Button
             label="Ir a iniciar sesión"
@@ -166,7 +147,7 @@ export function HU00_RegistrationModal({
           <View style={styles.formHeading}>
             <Text style={styles.sectionTitle}>Datos de la empresa</Text>
             <Text style={styles.sectionBody}>
-              Las solicitudes quedan pendientes de validación institucional.
+              Solo lo esencial para crear la cuenta. Completarás el resto desde tu panel.
             </Text>
           </View>
 
@@ -178,15 +159,18 @@ export function HU00_RegistrationModal({
               onChangeText={setCompanyName}
               placeholder="Nombre legal de la empresa"
               maxLength={255}
+              icon="business-outline"
               containerStyle={wide ? styles.fieldWide : styles.field}
             />
             <TextField
               label="NIT"
-              optionalLabel="Opcional"
+              required
               value={nit}
               onChangeText={setNit}
               placeholder="900.123.456-7"
+              keyboardType="numbers-and-punctuation"
               maxLength={20}
+              icon="card-outline"
               containerStyle={wide ? styles.fieldWide : styles.field}
             />
             <TextField
@@ -194,17 +178,10 @@ export function HU00_RegistrationModal({
               required
               value={name}
               onChangeText={setName}
-              placeholder="Persona responsable"
+              placeholder="Persona responsable ante UNIPAZ"
+              autoCapitalize="words"
               maxLength={255}
-              containerStyle={wide ? styles.fieldWide : styles.field}
-            />
-            <TextField
-              label="Persona de contacto"
-              required
-              value={contactPerson}
-              onChangeText={setContactPerson}
-              placeholder="Contacto de recursos humanos"
-              maxLength={255}
+              icon="person-outline"
               containerStyle={wide ? styles.fieldWide : styles.field}
             />
             <TextField
@@ -215,35 +192,9 @@ export function HU00_RegistrationModal({
               placeholder="nombre@empresa.com"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
               maxLength={255}
-              containerStyle={wide ? styles.fieldWide : styles.field}
-            />
-            <TextField
-              label="Sector"
-              required
-              value={sector}
-              onChangeText={setSector}
-              placeholder="Tecnología, energía, servicios…"
-              maxLength={100}
-              containerStyle={wide ? styles.fieldWide : styles.field}
-            />
-            <TextField
-              label="Teléfono"
-              required
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+57 300 000 0000"
-              keyboardType="phone-pad"
-              maxLength={20}
-              containerStyle={wide ? styles.fieldWide : styles.field}
-            />
-            <TextField
-              label="Dirección"
-              required
-              value={address}
-              onChangeText={setAddress}
-              placeholder="Dirección de la empresa"
-              maxLength={255}
+              icon="mail-outline"
               containerStyle={wide ? styles.fieldWide : styles.field}
             />
             <TextField
@@ -254,6 +205,7 @@ export function HU00_RegistrationModal({
               placeholder="Mínimo 8 caracteres"
               secureTextEntry
               secureToggle
+              icon="lock-closed-outline"
               containerStyle={wide ? styles.fieldWide : styles.field}
             />
             <TextField
@@ -264,20 +216,15 @@ export function HU00_RegistrationModal({
               placeholder="Repite la contraseña"
               secureTextEntry
               secureToggle
+              icon="lock-closed-outline"
               containerStyle={wide ? styles.fieldWide : styles.field}
             />
-            <TextField
-              label="Descripción"
-              required
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Describe brevemente la actividad de la empresa"
-              multiline
-              numberOfLines={3}
-              maxLength={1000}
-              containerStyle={[styles.field, styles.fullField]}
-            />
           </View>
+
+          <Notice
+            tone="info"
+            message="Al entrar por primera vez, tu panel te pedirá completar sector, teléfono, dirección y descripción."
+          />
 
           {errorMessage ? (
             <Notice tone="error" message={errorMessage} onDismiss={() => setErrorMessage(null)} />
@@ -384,9 +331,6 @@ const styles = StyleSheet.create({
   fieldWide: {
     width: '48%',
     flexGrow: 1,
-  },
-  fullField: {
-    width: '100%',
   },
   link: {
     ...Type.caption,

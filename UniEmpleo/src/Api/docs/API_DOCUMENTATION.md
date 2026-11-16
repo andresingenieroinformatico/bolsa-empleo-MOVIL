@@ -65,22 +65,19 @@ empresas y administradores ingresan con correo y contraseña.
 ### 1.3 Registro de Empresas
 - **Método:** `POST`
 - **URL:** `/api/v1/auth/register/company` (o `/api/v1/auth/register-company`)
-- **Cuerpo (JSON):**
+- **Cuerpo (JSON):** solo se envían los datos esenciales. `sector`, `phone`, `address` y `description` son opcionales en el registro y se completan después con `PUT /api/v1/companies/profile`.
 ```json
 {
-  "name": "Contacto RRHH",
+  "name": "Andrés Morales",
   "email": "contacto@nuevapetrolera.com",
   "password": "PasswordEmpresa123*",
   "password_confirmation": "PasswordEmpresa123*",
   "company_name": "Servicios Petroleros del Oriente S.A.S.",
   "nit": "901.888.777-1",
-  "sector": "Petróleo y Gas",
-  "contact_person": "Andrés Morales",
-  "phone": "+57 310 999 8888",
-  "address": "Zona Industrial, Barrancabermeja",
-  "description": "Empresa dedicada a la prestación de servicios técnicos y de mantenimiento."
+  "contact_person": "Andrés Morales"
 }
 ```
+- **Campos obligatorios:** `name`, `email`, `password`, `password_confirmation`, `company_name` y `nit`.
 - **Respuesta (201 Created):** Empresa creada con estado `pending` a la espera de aprobación institucional.
 
 ### 1.4 Consultar Usuario Autenticado
@@ -155,6 +152,19 @@ empresas y administradores ingresan con correo y contraseña.
 - **Método:** `GET` / `PUT`
 - **URL:** `/api/v1/companies/profile`
 - **Headers:** `Authorization: Bearer <TOKEN_EMPRESA>`
+- **Respuesta (GET):** Debe incluir `company_name`, `nit`, `sector`, `contact_person`, `phone`, `address` y `description` para que la app detecte los datos pendientes.
+- **Cuerpo (PUT):** Completa el registro iniciado en `auth/register/company`.
+```json
+{
+  "company_name": "Servicios Petroleros del Oriente S.A.S.",
+  "nit": "901.888.777-1",
+  "sector": "Petróleo y Gas",
+  "contact_person": "Andrés Morales",
+  "phone": "+57 310 999 8888",
+  "address": "Zona Industrial, Barrancabermeja",
+  "description": "Empresa dedicada a la prestación de servicios técnicos y de mantenimiento."
+}
+```
 
 ---
 

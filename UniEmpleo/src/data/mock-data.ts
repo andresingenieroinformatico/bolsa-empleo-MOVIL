@@ -39,6 +39,10 @@ export interface CompanyProfile {
   status: CompanyStatus;
   rejectionReason?: string;
   logo?: string;
+  /** Persona responsable de la cuenta ante UNIPAZ. */
+  contactPerson?: string;
+  phone?: string;
+  address?: string;
 }
 
 export interface JobOffer {

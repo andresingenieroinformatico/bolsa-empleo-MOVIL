@@ -227,12 +227,13 @@ export interface CompanyRegistrationInput {
   password: string;
   password_confirmation: string;
   company_name: string;
-  nit?: string;
-  sector: string;
+  nit: string;
   contact_person: string;
-  phone: string;
-  address: string;
-  description: string;
+  /** Optional at sign-up: the company completes these from its dashboard. */
+  sector?: string;
+  phone?: string;
+  address?: string;
+  description?: string;
 }
 
 export function registerCompany(

@@ -11,6 +11,8 @@ import { Sheet } from '@/components/ui/sheet';
 import { TextField } from '@/components/ui/text-field';
 import { Notice } from '@/components/ui/notice';
 import { SectionHeader } from '@/components/ui/section-header';
+import { CompanyProfileCompletionSheet } from '@/components/CompanyProfileCompletionSheet';
+import { getMissingCompanyProfileFields } from '@/lib/company-profile';
 import { pluralize } from '@/lib/format';
 
 const JOB_MODALITIES: JobModality[] = ['Presencial', 'Remoto', 'Híbrido'];
@@ -34,6 +36,7 @@ interface MisVacantesViewProps {
   onAddJob: (newJob: JobOffer) => Promise<void>;
   onUpdateJob: (updatedJob: JobOffer) => Promise<void>;
   onToggleJobStatus: (jobId: string) => Promise<void>;
+  onUpdateCompany: (updatedCompany: CompanyProfile) => Promise<void>;
 }
 
 export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
@@ -42,8 +45,10 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
   onAddJob,
   onUpdateJob,
   onToggleJobStatus,
+  onUpdateCompany,
 }) => {
   const [showFormModal, setShowFormModal] = useState(false);
+  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
   const [editingJob, setEditingJob] = useState<JobOffer | null>(null);
 
   const [title, setTitle] = useState('');
@@ -70,14 +75,7 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
   const companyJobs = jobs.filter((job) => job.companyId === company.id);
   const blocked = company.status !== 'approved' && !editingJob;
 
-  const handleOpenCreateModal = () => {
-    if (company.status !== 'approved') {
-      setEditingJob(null);
-      setFormError(null);
-      setShowFormModal(true);
-      return;
-    }
-
+  const openCreateForm = () => {
     setEditingJob(null);
     setTitle('');
     setDescription('');
@@ -96,6 +94,22 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
     setLocation('');
     setFormError(null);
     setShowFormModal(true);
+  };
+
+  const handleOpenCreateModal = () => {
+    if (company.status !== 'approved') {
+      setEditingJob(null);
+      setFormError(null);
+      setShowFormModal(true);
+      return;
+    }
+
+    if (getMissingCompanyProfileFields(company).length > 0) {
+      setShowProfileCompletion(true);
+      return;
+    }
+
+    openCreateForm();
   };
 
   const handleOpenEditModal = (job: JobOffer) => {
@@ -486,6 +500,19 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
           </>
         )}
       </Sheet>
+
+      {showProfileCompletion ? (
+        <CompanyProfileCompletionSheet
+          visible
+          company={company}
+          context="publish"
+          onClose={() => setShowProfileCompletion(false)}
+          onSave={async (updatedCompany) => {
+            await onUpdateCompany(updatedCompany);
+          }}
+          onSaved={openCreateForm}
+        />
+      ) : null}
     </View>
   );
 };

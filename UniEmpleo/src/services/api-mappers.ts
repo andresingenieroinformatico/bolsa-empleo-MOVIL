@@ -201,6 +201,9 @@ export function mapCompany(value: unknown, statusValue?: unknown): CompanyProfil
     description: stringValue(data, 'description', 'descripcion') || '',
     status: companyStatus(data),
     rejectionReason: stringValue(data, 'rejection_reason', 'motivo_rechazo'),
+    contactPerson: stringValue(data, 'contact_person', 'responsable', 'contact_name'),
+    phone: stringValue(data, 'phone', 'telefono', 'teléfono'),
+    address: stringValue(data, 'address', 'direccion', 'dirección'),
   };
 }
 

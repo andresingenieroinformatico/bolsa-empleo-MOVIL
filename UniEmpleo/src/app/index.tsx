@@ -62,6 +62,11 @@ import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
 import { Icon, IconName } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { CompanyProfileCompletionSheet } from '@/components/CompanyProfileCompletionSheet';
+import {
+  describeMissingCompanyFields,
+  getMissingCompanyProfileFields,
+} from '@/lib/company-profile';
 
 // Vistas de Estudiante
 import { HU04_VacantesView } from '@/views/student/HU04_VacantesView';
@@ -126,6 +131,7 @@ export default function HomeScreen() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
+  const [showCompanyProfileCompletion, setShowCompanyProfileCompletion] = useState(false);
 
   const loadPublicJobs = useCallback(async (
     filters: JobSearchFilters = {},
@@ -338,8 +344,7 @@ export default function HomeScreen() {
     }
   };
 
-  const handleUpdateStudent = async (updated: StudentProfile) => {
-    if (!session || session.user.role !== 'student') {
+  const handleUpdateStudent = async (updated: StudentProfile) => {    if (!session || session.user.role !== 'student') {
       throw new Error('Inicia sesión para guardar tu perfil.');
     }
     try {
@@ -367,6 +372,31 @@ export default function HomeScreen() {
       setStudent(updated);
       setApiError(null);
       return updated;
+    } catch (error) {
+      reportError(error);
+      throw error;
+    }
+  };
+
+  const handleUpdateCompany = async (updated: CompanyProfile) => {
+    if (!session || session.user.role !== 'company') {
+      throw new Error('Inicia sesión como empresa para actualizar el perfil.');
+    }
+    try {
+      await updateCompanyProfile(session.token, {
+        company_name: updated.name,
+        nit: updated.nit,
+        sector: updated.sector,
+        contact_person: updated.contactPerson || '',
+        phone: updated.phone || '',
+        address: updated.address || '',
+        description: updated.description,
+      });
+      setCompany(updated);
+      setCompanies((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setApiError(null);
     } catch (error) {
       reportError(error);
       throw error;
@@ -512,6 +542,11 @@ export default function HomeScreen() {
   const showBottomNav = (currentRole === 'student' || currentRole === 'company') && !accessRequiresLogin;
   const showCompanyMissingProfile =
     !isLoading && !apiError && !company && currentRole === 'company' && hasActiveRole;
+  const missingCompanyProfileFields =
+    currentRole === 'company' && hasActiveRole && company
+      ? getMissingCompanyProfileFields(company)
+      : [];
+  const showCompanyProfileBanner = missingCompanyProfileFields.length > 0;
 
   return (
     <SafeAreaView
@@ -556,6 +591,20 @@ export default function HomeScreen() {
               <RoleContentSkeleton />
             ) : (
               <>
+                {showCompanyProfileBanner && company ? (
+                  <View style={styles.companyProfileBanner}>
+                    <Notice
+                      tone="warning"
+                      title="Completa el registro de tu empresa"
+                      message={`Faltan datos: ${describeMissingCompanyFields(
+                        missingCompanyProfileFields,
+                      )}. Completa el registro para habilitar todas las funciones.`}
+                      actionLabel="Completar ahora"
+                      onAction={() => setShowCompanyProfileCompletion(true)}
+                    />
+                  </View>
+                ) : null}
+
                 {currentRole === 'student' && studentTab === 'vacantes' && (
                   <HU04_VacantesView
                     jobs={jobs}
@@ -585,6 +634,7 @@ export default function HomeScreen() {
                     onAddJob={handleAddJob}
                     onUpdateJob={handleUpdateJob}
                     onToggleJobStatus={handleToggleJobStatus}
+                    onUpdateCompany={handleUpdateCompany}
                   />
                 )}
                 {currentRole === 'company' && hasActiveRole && company && companyTab === 'candidatos' && (
@@ -597,21 +647,7 @@ export default function HomeScreen() {
                 {currentRole === 'company' && hasActiveRole && company && companyTab === 'perfil' && (
                   <HU02_PerfilEmpresaView
                     company={company}
-                    onUpdateCompany={async (updated) => {
-                      if (!session || session.user.role !== 'company') {
-                        throw new Error('Inicia sesión como empresa para actualizar el perfil.');
-                      }
-                      await updateCompanyProfile(session.token, {
-                        company_name: updated.name,
-                        nit: updated.nit,
-                        sector: updated.sector,
-                        description: updated.description,
-                      });
-                      setCompany(updated);
-                      setCompanies((current) =>
-                        current.map((item) => item.id === updated.id ? updated : item),
-                      );
-                    }}
+                    onUpdateCompany={handleUpdateCompany}
                   />
                 )}
                 {currentRole === 'admin' && hasActiveRole && (
@@ -664,6 +700,15 @@ export default function HomeScreen() {
           />
         </View>
       )}
+
+      {showCompanyProfileCompletion && company ? (
+        <CompanyProfileCompletionSheet
+          visible
+          company={company}
+          onClose={() => setShowCompanyProfileCompletion(false)}
+          onSave={handleUpdateCompany}
+        />
+      ) : null}
 
       <HU01_LoginModal
         visible={showLoginModal}
@@ -894,6 +939,12 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: Brand.canvas,
     alignItems: 'center',
+  },
+  companyProfileBanner: {
+    width: '100%',
+    maxWidth: 920,
+    paddingHorizontal: Space.lg,
+    paddingTop: Space.md,
   },
   errorDock: {
     position: 'absolute',

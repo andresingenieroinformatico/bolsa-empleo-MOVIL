@@ -173,9 +173,15 @@ export const HU06_PostulacionesView: React.FC<PostulacionesViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    backgroundColor: '#F4F5F7',
   },
   headerInfo: {
+    width: '100%',
+    maxWidth: 840,
+    alignSelf: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
@@ -183,7 +189,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#111827',
+    color: '#1A1F36',
   },
   headerSubtitle: {
     fontSize: 13,
@@ -191,6 +197,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   listContent: {
+    width: '100%',
+    maxWidth: 840,
+    alignSelf: 'center',
     padding: 16,
     paddingBottom: 40,
     gap: 12,
@@ -212,8 +221,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF5FF',
   },
   cardHighlightAccepted: {
-    borderColor: '#A7F3D0',
-    backgroundColor: '#F0FDF4',
+    borderColor: '#34D399',
+    backgroundColor: '#E6F7ED',
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -230,7 +239,7 @@ const styles = StyleSheet.create({
   jobTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1A1F36',
     marginBottom: 8,
   },
   interviewAlertBox: {
@@ -256,7 +265,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: '#F4F5F7',
     paddingTop: 8,
   },
   metaText: {
@@ -265,7 +274,7 @@ const styles = StyleSheet.create({
   },
   metaCv: {
     fontSize: 11,
-    color: '#0F766E',
+    color: '#00963F',
     fontWeight: '600',
   },
   modalOverlay: {
@@ -280,7 +289,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 520,
+    maxHeight: '90%',
   },
   modalTopRow: {
     flexDirection: 'row',
@@ -291,8 +301,8 @@ const styles = StyleSheet.create({
   tag: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0F766E',
-    backgroundColor: '#CCFBF1',
+    color: '#00963F',
+    backgroundColor: '#E6F7ED',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -308,7 +318,7 @@ const styles = StyleSheet.create({
   modalJobTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#111827',
+    color: '#1A1F36',
     marginTop: 4,
   },
   modalCompany: {
@@ -326,10 +336,10 @@ const styles = StyleSheet.create({
   statusBoxLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: '#6B7280',
   },
   explanationBox: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F4F5F7',
     padding: 12,
     borderRadius: 10,
     marginBottom: 14,
@@ -338,7 +348,7 @@ const styles = StyleSheet.create({
   },
   explanationText: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#6B7280',
     lineHeight: 18,
   },
   interviewDetailsCard: {
@@ -374,12 +384,12 @@ const styles = StyleSheet.create({
   },
   detailValue: {
     fontSize: 12,
-    color: '#111827',
+    color: '#1A1F36',
     fontWeight: '600',
   },
   privacyNotice: {
     marginTop: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F4F5F7',
     padding: 8,
     borderRadius: 8,
   },
@@ -389,7 +399,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   closeActionBtn: {
-    backgroundColor: '#0F766E',
+    backgroundColor: '#00963F',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',

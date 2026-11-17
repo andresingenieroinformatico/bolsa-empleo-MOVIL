@@ -40,6 +40,10 @@
   }
 }
 ```
+El campo `user.role` identifica la cuenta autenticada (`student`, `company` o
+`admin`) y debe usarse como fuente de verdad para dirigir al usuario a su
+sección. El inicio de sesión con Google se reserva para cuentas `student`;
+empresas y administradores ingresan con correo y contraseña.
 
 ### 1.2 Registro de Estudiantes
 - **Método:** `POST`

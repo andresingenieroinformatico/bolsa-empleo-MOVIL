@@ -4,6 +4,12 @@
 **Base URL Gateway (Next.js):** `http://localhost:3000/api/v1`  
 **Backend Core (Laravel):** `http://127.0.0.1:8000/api/v1`
 
+En producción, configura `CORS_ALLOWED_ORIGINS` como una lista separada por comas
+de los orígenes web autorizados. Si no se configura, el gateway no habilita CORS
+para orígenes externos en producción; Expo nativo no necesita CORS. En desarrollo
+se permiten los orígenes locales de Expo (`localhost` y `127.0.0.1`, puertos
+8081 y 19006).
+
 ---
 
 ## 1. Módulo de Autenticación (`/api/v1/auth`)
@@ -16,7 +22,7 @@
 ```json
 {
   "email": "carlos.lopez@unipaz.edu.co",
-  "password": "EstudianteUNIPAZ2024*"
+  "password": "<contraseña-de-prueba-configurada>"
 }
 ```
 - **Respuesta Exitosa (200 OK):**
@@ -113,6 +119,8 @@ empresas y administradores ingresan con correo y contraseña.
 - **URL:** `/api/v1/students/upload-cv` (o `/api/v1/student/profile/cv`)
 - **Headers:** `Authorization: Bearer <TOKEN_ESTUDIANTE>`, `Content-Type: multipart/form-data`
 - **FormData:** Clave `cv` (archivo `.pdf`, máx 5MB).
+- El gateway valida el tamaño máximo y la firma `%PDF-` del archivo antes de
+  reenviarlo al backend.
 - **Respuesta Exitosa (200 OK):**
 ```json
 {

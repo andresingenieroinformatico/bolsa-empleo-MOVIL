@@ -3,8 +3,27 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+function requireSeedPassword(name: string): string {
+  const value = process.env[name];
+  if (!value || value.length < 16) {
+    throw new Error(`${name} debe configurarse con al menos 16 caracteres.`);
+  }
+  return value;
+}
+
 async function main() {
   console.log("🌱 Iniciando seeder de la base de datos...");
+
+  if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
+    throw new Error("El seeder solo puede ejecutarse en entornos development o test.");
+  }
+  if (process.env.ALLOW_DESTRUCTIVE_SEED !== "true") {
+    throw new Error("Configura ALLOW_DESTRUCTIVE_SEED=true para confirmar que se borrarán los datos existentes.");
+  }
+
+  const adminPassword = await bcrypt.hash(requireSeedPassword("SEED_ADMIN_PASSWORD"), 12);
+  const companyPassword = await bcrypt.hash(requireSeedPassword("SEED_COMPANY_PASSWORD"), 12);
+  const studentPassword = await bcrypt.hash(requireSeedPassword("SEED_STUDENT_PASSWORD"), 12);
 
   // Limpiar datos previos en orden de dependencias
   await prisma.notification.deleteMany();
@@ -13,11 +32,6 @@ async function main() {
   await prisma.studentProfile.deleteMany();
   await prisma.companyProfile.deleteMany();
   await prisma.user.deleteMany();
-
-  // Hashes de contraseñas
-  const adminPassword = await bcrypt.hash("AdminUNIPAZ2024*", 10);
-  const companyPassword = await bcrypt.hash("EmpresaUNIPAZ2024*", 10);
-  const studentPassword = await bcrypt.hash("EstudianteUNIPAZ2024*", 10);
 
   // 1. Crear Administrador
   const admin = await prisma.user.create({
@@ -92,7 +106,7 @@ async function main() {
           documento: "1098765432",
           telefono: "3101234567",
           descripcion: "Estudiante de 8vo semestre con sólida experiencia en React Native, TypeScript y desarrollo fullstack.",
-          cv_url: "/uploads/cvs/cv-carlos-lopez.pdf",
+          cv_url: null,
         },
       },
       notifications: {

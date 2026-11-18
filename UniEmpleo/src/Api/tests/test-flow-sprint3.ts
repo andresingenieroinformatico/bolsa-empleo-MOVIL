@@ -8,6 +8,18 @@ import { PrismaClient } from "@prisma/client";
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000/api/v1";
 const prisma = new PrismaClient();
+const credentials = {
+  studentEmail: process.env.TEST_STUDENT_EMAIL,
+  studentPassword: process.env.TEST_STUDENT_PASSWORD,
+  companyEmail: process.env.TEST_COMPANY_EMAIL,
+  companyPassword: process.env.TEST_COMPANY_PASSWORD,
+  adminEmail: process.env.TEST_ADMIN_EMAIL,
+  adminPassword: process.env.TEST_ADMIN_PASSWORD,
+};
+
+for (const [name, value] of Object.entries(credentials)) {
+  if (!value) throw new Error(`Falta configurar ${name} para ejecutar la prueba de integración.`);
+}
 
 interface LoginResponse {
   success: boolean;
@@ -44,8 +56,8 @@ async function runTests() {
     method: "POST",
     headers: { "Content-Type": "application/json", "Accept": "application/json" },
     body: JSON.stringify({
-      email: "carlos.lopez@unipaz.edu.co",
-      password: "EstudianteUNIPAZ2024*",
+      email: credentials.studentEmail,
+      password: credentials.studentPassword,
     }),
   });
   const studentLogin: LoginResponse = await studentLoginRes.json();
@@ -53,15 +65,15 @@ async function runTests() {
     throw new Error(`Falló login estudiante: ${JSON.stringify(studentLogin)}`);
   }
   studentToken = studentLogin.data.token;
-  console.log(`  ✅ Login Estudiante exitoso. Token Sanctum obtenido: ${studentToken.substring(0, 15)}...`);
+  console.log("  ✅ Login Estudiante exitoso.");
 
   // 1.2 Login Empresa
   const companyLoginRes = await fetch(`${BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Accept": "application/json" },
     body: JSON.stringify({
-      email: "info@tecnosoluciones.edu.co",
-      password: "EmpresaUNIPAZ2024*",
+      email: credentials.companyEmail,
+      password: credentials.companyPassword,
     }),
   });
   const companyLogin: LoginResponse = await companyLoginRes.json();
@@ -69,15 +81,15 @@ async function runTests() {
     throw new Error(`Falló login empresa: ${JSON.stringify(companyLogin)}`);
   }
   companyToken = companyLogin.data.token;
-  console.log(`  ✅ Login Empresa exitoso. Token Sanctum obtenido: ${companyToken.substring(0, 15)}...`);
+  console.log("  ✅ Login Empresa exitoso.");
 
   // 1.3 Login Admin
   const adminLoginRes = await fetch(`${BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Accept": "application/json" },
     body: JSON.stringify({
-      email: "admin@unipaz.edu.co",
-      password: "AdminUNIPAZ2024*",
+      email: credentials.adminEmail,
+      password: credentials.adminPassword,
     }),
   });
   const adminLogin: LoginResponse = await adminLoginRes.json();
@@ -85,7 +97,7 @@ async function runTests() {
     throw new Error(`Falló login admin: ${JSON.stringify(adminLogin)}`);
   }
   adminToken = adminLogin.data.token;
-  console.log(`  ✅ Login Administrador exitoso. Token Sanctum obtenido: ${adminToken.substring(0, 15)}...\n`);
+  console.log("  ✅ Login Administrador exitoso.\n");
 
   // 2. VERIFICACIÓN DE ESTADO DE EMPRESA Y CREACIÓN DE VACANTE
   console.log("📌 [Paso 2] Empresa: Verificar Estado de Aprobación y Crear Vacante...");
@@ -130,7 +142,7 @@ async function runTests() {
   const samplePdf = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF");
   const uploadFormData = new FormData();
   const pdfBlob = new Blob([samplePdf], { type: "application/pdf" });
-  uploadFormData.append("cv", pdfBlob, "cv-carlos-lopez.pdf");
+  uploadFormData.append("cv", pdfBlob, "test-resume.pdf");
 
   const uploadRes = await fetch(`${BASE_URL}/students/upload-cv`, {
     method: "POST",

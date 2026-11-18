@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) {
     transformResponse: (response: any) => {
       if (response && response.data) {
         const company = response.data;
-        const isApproved = company.status === "approved" || company.is_approved === true;
+        const isApproved =
+          company.status === "approved" ||
+          company.is_approved === true ||
+          company.aprobada === true;
         return {
           success: true,
           message: "Estado de la empresa obtenido",

@@ -3,22 +3,28 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const laravelUrl = process.env.LARAVEL_API_URL || "http://127.0.0.1:8000";
+  const configuredLaravelUrl = process.env.LARAVEL_API_URL || "http://127.0.0.1:8000";
+  const laravelUrl = new URL(
+    "api/v1/jobs",
+    `${configuredLaravelUrl.replace(/\/+$/, "")}/`
+  );
 
   let laravelOnline = false;
   try {
-    const res = await fetch(`${laravelUrl}/api/v1/jobs`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(laravelUrl, { signal: AbortSignal.timeout(3000) });
     laravelOnline = res.ok;
   } catch {
     laravelOnline = false;
   }
 
   return NextResponse.json({
-    success: true,
-    message: "Bolsa de Empleo UNIPAZ - API REST Bridge (Next.js Node.js -> Laravel 12)",
+    success: laravelOnline,
+    message: laravelOnline
+      ? "Gateway y backend de empleos disponibles."
+      : "El gateway está disponible, pero no pudo alcanzar una ruta válida del backend Laravel.",
     data: {
       version: "1.0.0",
-      status: "online",
+      status: laravelOnline ? "online" : "degraded",
       server_time: new Date().toISOString(),
       architecture: {
         gateway: "Next.js 14 (App Router / Node.js) en puerto 3000",
@@ -37,5 +43,5 @@ export async function GET() {
         "/api/v1/admin",
       ],
     },
-  });
+  }, { status: laravelOnline ? 200 : 503 });
 }

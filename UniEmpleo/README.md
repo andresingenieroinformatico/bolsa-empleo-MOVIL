@@ -47,8 +47,10 @@ environment variables.
 
 The native Android account chooser cannot run in Expo Go. After installing
 dependencies, generate and install a development build with
-`npx expo run:android`; rebuilding is required whenever native dependencies
-change. For later sessions, start Metro with `npx expo start --dev-client`.
+`npx expo run:android`; rebuilding and reinstalling the app is required whenever
+native dependencies change. Restarting Metro only updates JavaScript and does
+not add native modules to an already-installed app. For later sessions, start
+Metro with `npx expo start --dev-client`.
 On Windows, keep the project path ASCII-only (for example,
 `C:\dev\UniEmpleo`) because the Android native build tools fail on paths with
 accented characters. Register the SHA-1 shown by `.\gradlew signingReport`

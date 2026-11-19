@@ -4,13 +4,30 @@ import { AuthSession as StoredSession, saveAuthSession } from '@/services/auth-s
 
 type GoogleSignInModule = typeof import('@react-native-google-signin/google-signin');
 
-async function loadGoogleSignIn(): Promise<GoogleSignInModule> {
+function loadGoogleSignIn(): GoogleSignInModule {
   try {
-    return await import('@react-native-google-signin/google-signin');
+    // Load only when requested so Expo Go can still open the rest of the app.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sdk = require('@react-native-google-signin/google-signin') as GoogleSignInModule;
+    const signIn = sdk.GoogleSignin;
+    if (
+      !signIn ||
+      typeof signIn.hasPlayServices !== 'function' ||
+      typeof signIn.configure !== 'function' ||
+      typeof signIn.signOut !== 'function' ||
+      typeof signIn.signIn !== 'function'
+    ) {
+      throw new Error('La versión instalada de Google Sign-In no expone las funciones requeridas.');
+    }
+    return sdk;
   } catch (error) {
-    if (error instanceof Error && error.message.includes("'RNGoogleSignin' could not be found")) {
+    const message =
+      typeof error === 'object' && error !== null && 'message' in error
+        ? String(error.message)
+        : String(error);
+    if (message.includes('RNGoogleSignin') && message.includes('could not be found')) {
       throw new Error(
-        'Google Sign-In requiere una build de desarrollo; Expo Go no incluye el módulo nativo RNGoogleSignin.',
+        'La app instalada no incluye Google Sign-In. Expo Go no lo soporta; instala una build de desarrollo Android nueva.',
       );
     }
     throw error;
@@ -30,7 +47,7 @@ export function useStudentGoogleLogin({ onAuthenticated }: StudentGoogleLoginPro
       throw new Error('Falta configurar EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID para Google Sign-In.');
     }
 
-    const googleSignIn = await loadGoogleSignIn();
+    const googleSignIn = loadGoogleSignIn();
     setIsLoading(true);
     try {
       await googleSignIn.GoogleSignin.hasPlayServices();
@@ -42,7 +59,7 @@ export function useStudentGoogleLogin({ onAuthenticated }: StudentGoogleLoginPro
       // Avoid silently reusing the last app-selected account.
       await googleSignIn.GoogleSignin.signOut();
       const result = await googleSignIn.GoogleSignin.signIn();
-      if (!googleSignIn.isSuccessResponse(result)) {
+      if (result.type !== 'success') {
         throw new Error('Se canceló el inicio de sesión con Google.');
       }
 
@@ -58,11 +75,12 @@ export function useStudentGoogleLogin({ onAuthenticated }: StudentGoogleLoginPro
       await saveAuthSession(session);
       await onAuthenticated(session);
     } catch (error) {
-      if (googleSignIn.isErrorWithCode(error)) {
-        if (error.code === googleSignIn.statusCodes.SIGN_IN_CANCELLED) {
+      if (typeof error === 'object' && error !== null && 'code' in error) {
+        const code = error.code;
+        if (code === googleSignIn.statusCodes.SIGN_IN_CANCELLED) {
           throw new Error('Se canceló el inicio de sesión con Google.');
         }
-        if (error.code === googleSignIn.statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        if (code === googleSignIn.statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
           throw new Error('Google Play Services no está disponible o requiere una actualización.');
         }
       }

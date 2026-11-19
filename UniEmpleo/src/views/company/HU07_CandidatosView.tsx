@@ -1,41 +1,51 @@
 import React, { useEffect, useState } from 'react';
-import {
-  FlatList,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { SkeletonBlock } from '@/components/SkeletonBlock';
 import { Application, ApplicationStatus, JobOffer } from '@/data/mock-data';
+import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
+import { Icon, IconName } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
+import { Sheet } from '@/components/ui/sheet';
+import { TextField } from '@/components/ui/text-field';
+import { Notice } from '@/components/ui/notice';
+import { SectionHeader } from '@/components/ui/section-header';
+import { InfoRow } from '@/components/ui/info-row';
+import { formatDate, pluralize } from '@/lib/format';
 
 interface CandidatosViewProps {
   jobs: JobOffer[];
+  /** Disables candidate management while the company is not approved. */
+  readOnly?: boolean;
+  readOnlyMessage?: string;
   onLoadApplicants: (jobId: string) => Promise<Application[]>;
   onUpdateApplicationStatus: (
     appId: string,
     newStatus: ApplicationStatus,
     companyNotes?: string,
-    interviewNote?: string
+    interviewNote?: string,
   ) => Promise<void>;
 }
 
+const STATUS_OPTIONS: { value: ApplicationStatus; label: string; icon: IconName }[] = [
+  { value: 'reviewed', label: 'Revisado', icon: 'eye-outline' },
+  { value: 'interview', label: 'Entrevista', icon: 'calendar-outline' },
+  { value: 'accepted', label: 'Aceptar', icon: 'checkmark-circle-outline' },
+  { value: 'rejected', label: 'Rechazar', icon: 'close-circle-outline' },
+];
+
 export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
   jobs,
+  readOnly = false,
+  readOnlyMessage,
   onLoadApplicants,
   onUpdateApplicationStatus,
 }) => {
-  const [selectedJobId, setSelectedJobId] = useState<string>(
-    jobs[0]?.id || ''
-  );
+  const [selectedJobId, setSelectedJobId] = useState<string>(jobs[0]?.id || '');
   const [activeApplication, setActiveApplication] = useState<Application | null>(null);
 
-  // Estados del modal de gestión
   const [newStatus, setNewStatus] = useState<ApplicationStatus>('reviewed');
   const [companyNotes, setCompanyNotes] = useState('');
   const [interviewNote, setInterviewNote] = useState('');
@@ -48,7 +58,7 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
   const [applicantReloadKey, setApplicantReloadKey] = useState(0);
 
   const jobApplications = applications.filter((app) => app.jobId === selectedJobId);
-  const selectedJob = jobs.find((j) => j.id === selectedJobId);
+  const selectedJob = jobs.find((job) => job.id === selectedJobId);
 
   useEffect(() => {
     if (!selectedJobId) return;
@@ -87,6 +97,7 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
     setCompanyNotes(app.companyNotes || '');
     setInterviewNote(app.interviewNote || '');
     setStatusUpdatedSuccess(null);
+    setActionError(null);
   };
 
   const handleSaveStatus = async () => {
@@ -119,7 +130,9 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
         setStatusUpdatedSuccess(null);
       }, 900);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'No fue posible actualizar la postulación.');
+      setActionError(
+        error instanceof Error ? error.message : 'No fue posible actualizar la postulación.',
+      );
     } finally {
       setIsSavingStatus(false);
     }
@@ -127,254 +140,278 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Selector de Vacante */}
-      <View style={styles.jobSelectorArea}>
-        <Text style={styles.selectorLabel}>Selecciona la vacante a gestionar:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.jobTabsScroll}>
-          {jobs.map((job) => (
-            <TouchableOpacity
-              key={job.id}
-              style={[
-                styles.jobTab,
-                selectedJobId === job.id && styles.jobTabActive,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: selectedJobId === job.id }}
-              onPress={() => setSelectedJobId(job.id)}>
-              <Text
-                style={[
-                  styles.jobTabText,
-                  selectedJobId === job.id && styles.jobTabTextActive,
-                ]}>
-                {job.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Resumen de la vacante */}
-      {selectedJob && (
-        <View style={styles.jobSummaryCard}>
-          <Text style={styles.summaryTitle}>{selectedJob.title}</Text>
-          <Text style={styles.summaryMeta}>
-            {selectedJob.modality} · {selectedJob.contractType} · {jobApplications.length} candidato(s) postulado(s)
-          </Text>
-        </View>
-      )}
-
-      {loadError && (
-        <View style={styles.loadError}>
-          <Text style={styles.loadErrorText}>{loadError}</Text>
-          <TouchableOpacity
-            accessibilityRole="button"
-            style={styles.retryButton}
-            onPress={() => setApplicantReloadKey((current) => current + 1)}>
-            <Text style={styles.retryText}>Reintentar</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {isLoadingApplicants ? (
-        <View
-          accessibilityRole="progressbar"
-          accessibilityLabel="Cargando candidatos"
-          style={styles.loadingState}>
-          {Array.from({ length: 3 }, (_, index) => (
-            <View key={`candidate-skeleton-${index}`} style={styles.candidateSkeleton}>
-              <View style={styles.candidateSkeletonHeader}>
-                <SkeletonBlock style={styles.candidateSkeletonAvatar} />
-                <View style={styles.candidateSkeletonCopy}>
-                  <SkeletonBlock style={styles.candidateSkeletonName} />
-                  <SkeletonBlock style={styles.candidateSkeletonMeta} />
-                </View>
-              </View>
-              <SkeletonBlock style={styles.candidateSkeletonLine} />
-              <SkeletonBlock style={styles.candidateSkeletonLineShort} />
-            </View>
-          ))}
-        </View>
-      ) : (
-      /* Listado de Candidatos */
       <FlatList
+        style={styles.list}
         data={jobApplications}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <SectionHeader
+              overline="Selección"
+              title="Candidatos"
+              subtitle="Evalúa a los estudiantes postulados y registra el avance del proceso."
+            />
+
+            {jobs.length === 0 ? null : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.jobTabs}>
+                {jobs.map((job) => {
+                  const isActive = selectedJobId === job.id;
+                  return (
+                    <Pressable
+                      key={job.id}
+                      accessibilityRole="tab"
+                      accessibilityLabel={job.title}
+                      accessibilityState={{ selected: isActive }}
+                      onPress={() => setSelectedJobId(job.id)}
+                      style={({ pressed }) => [
+                        styles.jobTab,
+                        isActive && styles.jobTabActive,
+                        pressed && styles.pressed,
+                      ]}>
+                      <Text
+                        style={[styles.jobTabText, isActive && styles.jobTabTextActive]}
+                        numberOfLines={1}>
+                        {job.title}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+
+            {selectedJob ? (
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryIcon}>
+                  <Icon name="briefcase-outline" size={18} color={Brand.greenDark} />
+                </View>
+                <View style={styles.summaryCopy}>
+                  <Text style={styles.summaryTitle} numberOfLines={1}>
+                    {selectedJob.title}
+                  </Text>
+                  <Text style={styles.summaryMeta}>
+                    {selectedJob.modality} · {selectedJob.contractType} ·{' '}
+                    {pluralize(jobApplications.length, 'candidato', 'candidatos')}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {loadError ? (
+              <Notice
+                tone="error"
+                message={loadError}
+                actionLabel="Reintentar"
+                onAction={() => setApplicantReloadKey((current) => current + 1)}
+              />
+            ) : null}
+
+            {readOnly ? (
+              <Notice
+                tone="warning"
+                title="Gestión de candidatos deshabilitada"
+                message={
+                  readOnlyMessage ??
+                  'Tu empresa debe estar aprobada para actualizar el estado de los candidatos.'
+                }
+              />
+            ) : null}
+          </View>
+        }
         ListEmptyComponent={
-          loadError ? undefined : (
+          isLoadingApplicants ? (
+            <View
+              accessibilityRole="progressbar"
+              accessibilityLabel="Cargando candidatos"
+              style={styles.listContentSkeleton}>
+              {Array.from({ length: 3 }, (_, index) => (
+                <View key={`candidate-skeleton-${index}`} style={styles.skeletonCard}>
+                  <View style={styles.skeletonHeader}>
+                    <SkeletonBlock style={styles.skeletonAvatar} />
+                    <View style={styles.skeletonCopy}>
+                      <SkeletonBlock style={styles.skeletonName} />
+                      <SkeletonBlock style={styles.skeletonMeta} />
+                    </View>
+                  </View>
+                  <SkeletonBlock style={styles.skeletonLine} />
+                  <SkeletonBlock style={styles.skeletonLineShort} />
+                </View>
+              ))}
+            </View>
+          ) : loadError ? undefined : (
             <EmptyState
-              icon="👥"
+              icon="people-outline"
               title={selectedJob ? 'Sin postulantes todavía' : 'No tienes vacantes'}
               description={
                 selectedJob
-                  ? 'Los estudiantes que se postulen a esta vacante aparecerán en esta lista para su evaluación.'
+                  ? 'Los estudiantes que se postulen a esta vacante aparecerán aquí para su evaluación.'
                   : 'Cuando publiques una vacante, sus candidatos aparecerán aquí.'
               }
             />
           )
         }
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.candidateCard}
-            activeOpacity={0.88}
-            onPress={() => handleOpenManageModal(item)}>
-            <View style={styles.candidateHeader}>
-              <View style={styles.candidateAvatar}>
-                <Text style={styles.candidateAvatarText}>
-                  {item.studentName.slice(0, 2).toUpperCase()}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Evaluar a ${item.studentName}`}
+            onPress={() => handleOpenManageModal(item)}
+            style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+            <View style={styles.cardTop}>
+              <Avatar name={item.studentName} size={42} tone="navy" />
+              <View style={styles.cardTopCopy}>
                 <Text style={styles.candidateName}>{item.studentName}</Text>
-                <Text style={styles.candidateProgram}>{item.studentProgram}</Text>
+                <Text style={styles.candidateProgram} numberOfLines={1}>
+                  {item.studentProgram}
+                </Text>
               </View>
               <StatusBadge status={item.status} size="small" />
             </View>
 
-            <View style={styles.candidateDetails}>
-              <Text style={styles.appliedDateText}>📅 Postulación: {item.appliedAt}</Text>
-              <Text style={styles.cvFileText}>📄 {item.cvFileName}</Text>
+            <View style={styles.detailsRow}>
+              <View style={styles.detailItem}>
+                <Icon name="calendar-outline" size={13} color={Brand.slateSoft} />
+                <Text style={styles.detailText}>{formatDate(item.appliedAt)}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Icon name="document-text-outline" size={13} color={Brand.greenDark} />
+                <Text style={styles.cvText} numberOfLines={1}>
+                  {item.cvFileName}
+                </Text>
+              </View>
             </View>
 
-            {item.companyNotes && (
-              <View style={styles.notesPreviewBox}>
-                <Text style={styles.notesPreviewLabel}>📝 Nota interna:</Text>
+            {item.companyNotes ? (
+              <View style={styles.notesPreview}>
+                <Icon name="lock-closed-outline" size={12} color={Brand.slateSoft} />
                 <Text style={styles.notesPreviewText} numberOfLines={1}>
                   {item.companyNotes}
                 </Text>
               </View>
-            )}
+            ) : null}
 
-            <View style={styles.cardActionRow}>
-              <Text style={styles.manageHint}>Evaluar candidato →</Text>
+            <View style={styles.cardAction}>
+              <Text style={styles.manageHint}>
+                {readOnly ? 'Ver detalle' : 'Evaluar candidato'}
+              </Text>
+              <Icon name="arrow-forward" size={14} color={Brand.greenDark} />
             </View>
-          </TouchableOpacity>
+          </Pressable>
         )}
       />
-      )}
 
-      {/* Modal de Gestión de Candidato (HU-07) */}
-      <Modal
+      <Sheet
         visible={activeApplication !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setActiveApplication(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            {activeApplication && (
-              <>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.tag}>HU-07 · Gestión de Candidatos</Text>
-                  <TouchableOpacity
-                    onPress={() => setActiveApplication(null)}
-                    style={styles.closeBtn}>
-                    <Text style={styles.closeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
+        onClose={() => setActiveApplication(null)}
+        title={activeApplication?.studentName}
+        subtitle={
+          activeApplication
+            ? `${activeApplication.studentProgram} · ${activeApplication.jobTitle}`
+            : undefined
+        }
+        icon="person-circle-outline"
+        closeLabel="Cerrar gestión de candidato"
+        footer={
+          <Button
+            label={
+              readOnly ? 'Gestión deshabilitada' : isSavingStatus ? 'Guardando…' : 'Guardar evaluación'
+            }
+            onPress={() => void handleSaveStatus()}
+            disabled={readOnly}
+            loading={isSavingStatus}
+            size="lg"
+            iconRight="checkmark"
+            fullWidth
+          />
+        }>
+        {activeApplication ? (
+          <>
+            <View style={styles.infoCard}>
+              <InfoRow
+                icon="calendar-outline"
+                label="Fecha de postulación"
+                value={formatDate(activeApplication.appliedAt)}
+              />
+              <InfoRow
+                icon="mail-outline"
+                label="Correo"
+                value={activeApplication.studentEmail}
+                last
+              />
+            </View>
 
-                <Text style={styles.modalCandidateName}>
-                  {activeApplication.studentName}
-                </Text>
-                <Text style={styles.modalCandidateSub}>
-                  {activeApplication.studentProgram} · {activeApplication.studentEmail}
-                </Text>
-
-                <ScrollView style={{ maxHeight: 380 }}>
-                  {/* Cambio de Estado (HU-07 Escenarios 3, 4, 5, 6) */}
-                  <Text style={styles.sectionHeading}>Actualizar Estado del Proceso</Text>
-                  <View style={styles.statusButtonsGrid}>
-                    <TouchableOpacity
-                      style={[
-                        styles.statusSelectBtn,
-                        newStatus === 'reviewed' && styles.statusSelectBtnActive,
-                      ]}
-                      onPress={() => setNewStatus('reviewed')}>
-                      <Text style={styles.statusSelectText}>👀 Revisado</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.statusSelectBtn,
-                        newStatus === 'interview' && styles.statusSelectBtnActive,
-                      ]}
-                      onPress={() => setNewStatus('interview')}>
-                      <Text style={styles.statusSelectText}>📅 Entrevista</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.statusSelectBtn,
-                        newStatus === 'accepted' && styles.statusSelectBtnActive,
-                      ]}
-                      onPress={() => setNewStatus('accepted')}>
-                      <Text style={styles.statusSelectText}>✅ Aceptar</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.statusSelectBtn,
-                        newStatus === 'rejected' && styles.statusSelectBtnActive,
-                      ]}
-                      onPress={() => setNewStatus('rejected')}>
-                      <Text style={styles.statusSelectText}>❌ Rechazar</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Campo de Citación a Entrevista */}
-                  {newStatus === 'interview' && (
-                    <View style={styles.interviewFieldBox}>
-                      <Text style={styles.fieldLabel}>
-                        Detalles / Citación a Entrevista (Visible para el estudiante)
-                      </Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Ej. Entrevista técnica el viernes a las 3:00 PM vía Meet o presencial en sede..."
-                        value={interviewNote}
-                        onChangeText={setInterviewNote}
-                      />
-                    </View>
-                  )}
-
-                  {/* Campo de Notas Internas de la Empresa (HU-07 Escenario 1 y HU-06 Escenario 6) */}
-                  <View style={styles.notesFieldBox}>
-                    <Text style={styles.fieldLabel}>
-                      📝 Notas Internas de la Empresa (Confidencial · No visible para el estudiante)
-                    </Text>
-                    <TextInput
-                      style={[styles.input, { height: 60 }]}
-                      multiline
-                      placeholder="Escribe comentarios privados sobre el candidato, fortalezas o expectativas salariales..."
-                      value={companyNotes}
-                      onChangeText={setCompanyNotes}
+            <Text style={styles.sectionLabel}>Actualizar estado del proceso</Text>
+            <View style={styles.statusGrid}>
+              {STATUS_OPTIONS.map((option) => {
+                const isSelected = newStatus === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="radio"
+                    accessibilityLabel={option.label}
+                    accessibilityState={{ checked: isSelected, disabled: readOnly }}
+                    disabled={readOnly}
+                    onPress={() => setNewStatus(option.value)}
+                    style={({ pressed }) => [
+                      styles.statusOption,
+                      isSelected && styles.statusOptionActive,
+                      readOnly && styles.statusOptionDisabled,
+                      pressed && styles.pressed,
+                    ]}>
+                    <Icon
+                      name={isSelected ? 'radio-button-on' : option.icon}
+                      size={isSelected ? 18 : 16}
+                      color={isSelected ? Brand.greenDark : Brand.slateSoft}
                     />
-                  </View>
-                </ScrollView>
+                    <Text
+                      style={[
+                        styles.statusOptionText,
+                        isSelected && styles.statusOptionTextActive,
+                      ]}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-                {statusUpdatedSuccess && (
-                  <View style={styles.successAlert}>
-                    <Text style={styles.successAlertText}>✅ {statusUpdatedSuccess}</Text>
-                  </View>
-                )}
+            {newStatus === 'interview' ? (
+              <TextField
+                label="Citación a entrevista"
+                hint="Este mensaje sí es visible para el estudiante."
+                value={interviewNote}
+                onChangeText={setInterviewNote}
+                placeholder="Ej. Entrevista técnica el viernes a las 3:00 PM."
+                multiline
+                numberOfLines={3}
+                maxLength={500}
+              />
+            ) : null}
 
-                {actionError && (
-                  <View style={styles.errorAlert}>
-                    <Text style={styles.errorAlertText}>{actionError}</Text>
-                  </View>
-                )}
+            <TextField
+              label="Notas internas"
+              hint="Confidencial: el estudiante no puede ver este campo."
+              value={companyNotes}
+              onChangeText={setCompanyNotes}
+              placeholder="Fortalezas, dudas o expectativas salariales del candidato."
+              multiline
+              numberOfLines={3}
+              maxLength={1000}
+              icon="lock-closed-outline"
+            />
 
-                <TouchableOpacity
-                  style={[styles.saveActionBtn, isSavingStatus && styles.disabledButton]}
-                  disabled={isSavingStatus}
-                  onPress={() => void handleSaveStatus()}>
-                  <Text style={styles.saveActionText}>
-                    {isSavingStatus ? 'Guardando…' : 'Guardar evaluación'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
+            {statusUpdatedSuccess ? (
+              <Notice tone="success" message={statusUpdatedSuccess} />
+            ) : null}
+            {actionError ? (
+              <Notice tone="error" message={actionError} onDismiss={() => setActionError(null)} />
+            ) : null}
+          </>
+        ) : null}
+      </Sheet>
     </View>
   );
 };
@@ -383,337 +420,230 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    maxWidth: 960,
-    alignSelf: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: Brand.canvas,
   },
-  jobSelectorArea: {
+  list: {
+    flex: 1,
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  selectorLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6B7280',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  jobTabsScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  jobTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    backgroundColor: '#F4F5F7',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  jobTabActive: {
-    backgroundColor: '#00963F',
-    borderColor: '#00963F',
-  },
-  jobTabText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '600',
-  },
-  jobTabTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  jobSummaryCard: {
-    margin: 16,
-    marginBottom: 4,
-    padding: 12,
-    backgroundColor: '#E6F7ED',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E6F7ED',
-  },
-  loadingState: {
-    gap: 12,
-    padding: 16,
-    width: '100%',
-    maxWidth: 920,
-    alignSelf: 'center',
-  },
-  candidateSkeleton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 12,
-  },
-  candidateSkeletonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  candidateSkeletonAvatar: { width: 38, height: 38, borderRadius: 19 },
-  candidateSkeletonCopy: { flex: 1, gap: 6 },
-  candidateSkeletonName: { width: '46%', height: 14 },
-  candidateSkeletonMeta: { width: '32%', height: 10 },
-  candidateSkeletonLine: { width: '84%', height: 10 },
-  candidateSkeletonLineShort: { width: '56%', height: 10 },
-  loadError: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 10,
-  },
-  loadErrorText: {
-    color: '#991B1B',
-    fontSize: 12,
-  },
-  retryButton: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    paddingVertical: 6,
-  },
-  retryText: {
-    color: '#10235F',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  summaryTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#00963F',
-  },
-  summaryMeta: {
-    fontSize: 12,
-    color: '#007832',
-    marginTop: 2,
   },
   listContent: {
     width: '100%',
     maxWidth: 920,
     alignSelf: 'center',
-    padding: 16,
-    paddingBottom: 40,
-    gap: 12,
+    padding: Space.lg,
+    paddingBottom: Space.huge,
+    gap: Space.md,
   },
-  candidateCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+  header: {
+    gap: Space.md,
+    marginBottom: Space.xs,
+  },
+  jobTabs: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  jobTab: {
+    maxWidth: 230,
+    paddingHorizontal: 14,
+    minHeight: 38,
+    justifyContent: 'center',
+    borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Brand.line,
+    backgroundColor: Brand.surface,
   },
-  candidateHeader: {
+  jobTabActive: {
+    backgroundColor: Brand.navy,
+    borderColor: Brand.navy,
+  },
+  jobTabText: {
+    ...Type.label,
+    color: Brand.slate,
+  },
+  jobTabTextActive: {
+    color: Brand.surface,
+    fontWeight: '700',
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  summaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 8,
+    padding: Space.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.greenTint,
+    borderWidth: 1,
+    borderColor: Brand.greenLine,
   },
-  candidateAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#00963F',
-    justifyContent: 'center',
+  summaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.surface,
   },
-  candidateAvatarText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
+  summaryCopy: {
+    flex: 1,
+    gap: 1,
+  },
+  summaryTitle: {
+    ...Type.bodyStrong,
+    color: Brand.greenDeep,
+  },
+  summaryMeta: {
+    ...Type.caption,
+    fontSize: 11,
+    color: '#39724E',
+  },
+  listContentSkeleton: {
+    gap: 12,
+  },
+  skeletonCard: {
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xl,
+    padding: Space.lg,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    gap: 12,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  skeletonAvatar: { width: 42, height: 42, borderRadius: 21 },
+  skeletonCopy: { flex: 1, gap: 6 },
+  skeletonName: { width: '46%', height: 14 },
+  skeletonMeta: { width: '32%', height: 10 },
+  skeletonLine: { width: '84%', height: 10 },
+  skeletonLineShort: { width: '56%', height: 10 },
+  card: {
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    padding: Space.lg,
+    gap: Space.md,
+    ...Shadows.card,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  cardTopCopy: {
+    flex: 1,
+    gap: 2,
   },
   candidateName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A1F36',
+    ...Type.heading,
+    color: Brand.ink,
   },
   candidateProgram: {
-    fontSize: 12,
-    color: '#6B7280',
+    ...Type.caption,
+    color: Brand.slate,
   },
-  candidateDetails: {
+  detailsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    gap: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F4F5F7',
+    borderTopColor: Brand.lineSoft,
+    paddingTop: Space.md,
   },
-  appliedDateText: {
-    fontSize: 11,
-    color: '#6B7280',
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flexShrink: 1,
   },
-  cvFileText: {
+  detailText: {
+    ...Type.caption,
     fontSize: 11,
-    color: '#00963F',
+    color: Brand.slate,
+  },
+  cvText: {
+    ...Type.caption,
+    fontSize: 11,
+    color: Brand.greenDark,
     fontWeight: '600',
+    maxWidth: 180,
   },
-  notesPreviewBox: {
-    backgroundColor: '#F4F5F7',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  notesPreviewLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#6B7280',
+  notesPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: Radius.sm,
+    backgroundColor: Brand.surfaceMuted,
   },
   notesPreviewText: {
+    ...Type.caption,
     fontSize: 11,
-    color: '#6B7280',
+    color: Brand.slate,
     fontStyle: 'italic',
+    flex: 1,
   },
-  cardActionRow: {
-    marginTop: 8,
-    alignItems: 'flex-end',
+  cardAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 4,
   },
   manageHint: {
-    fontSize: 12,
-    color: '#00963F',
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 560,
-    maxHeight: '90%',
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  tag: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#00963F',
-    backgroundColor: '#E6F7ED',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  closeBtn: {
-    padding: 6,
-  },
-  closeBtnText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    fontWeight: '700',
-  },
-  modalCandidateName: {
-    fontSize: 18,
+    ...Type.label,
+    color: Brand.greenDark,
     fontWeight: '800',
-    color: '#1A1F36',
-    marginTop: 6,
   },
-  modalCandidateSub: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  errorAlert: {
-    backgroundColor: '#FEF2F2',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 10,
+  infoCard: {
+    backgroundColor: Brand.surfaceMuted,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: Brand.lineSoft,
+    paddingHorizontal: Space.md,
   },
-  errorAlertText: {
-    color: '#991B1B',
-    fontSize: 10,
-    lineHeight: 14,
+  sectionLabel: {
+    ...Type.heading,
+    color: Brand.ink,
   },
-  sectionHeading: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1F36',
-    marginBottom: 8,
-  },
-  statusButtonsGrid: {
+  statusGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
   },
-  statusSelectBtn: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: '#F4F5F7',
-    paddingVertical: 10,
-    borderRadius: 8,
+  statusOption: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 7,
+    minWidth: '47%',
+    flexGrow: 1,
+    paddingHorizontal: 12,
+    minHeight: 44,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Brand.line,
+    backgroundColor: Brand.surface,
   },
-  statusSelectBtnActive: {
-    backgroundColor: '#00963F',
-    borderColor: '#00963F',
+  statusOptionActive: {
+    borderColor: Brand.greenLine,
+    backgroundColor: Brand.greenTint,
   },
-  statusSelectText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6B7280',
+  statusOptionDisabled: {
+    opacity: 0.55,
   },
-  interviewFieldBox: {
-    marginBottom: 10,
+  statusOptionText: {
+    ...Type.label,
+    color: Brand.slate,
   },
-  notesFieldBox: {
-    marginBottom: 10,
-  },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  input: {
-    backgroundColor: '#F4F5F7',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    fontSize: 12,
-    color: '#1A1F36',
-  },
-  saveActionBtn: {
-    backgroundColor: '#00963F',
-    paddingVertical: 13,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  saveActionText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  successAlert: {
-    backgroundColor: '#E6F7ED',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 6,
-  },
-  successAlertText: {
-    color: '#007832',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.6,
+  statusOptionTextActive: {
+    color: Brand.greenDeep,
+    fontWeight: '800',
   },
 });

@@ -21,23 +21,64 @@ API REST oficial desarrollada con **Next.js 14 (App Router)**, **Node.js**, **Ty
 ## 🚀 Comandos para Iniciar Ambos Servidores
 
 ### Terminal 1: Backend Central de Laravel (Puerto 8000)
-Ubicarse en el directorio del proyecto Laravel e iniciar el servidor:
+Ubicarse en el directorio del proyecto Laravel. La primera vez hay que crear el
+`.env`, la base SQLite y sembrar los datos de prueba:
 ```powershell
-cd C:\xampp\htdocs\mi-api-rest
+cd <ruta-del-backend-Laravel>
+Copy-Item .env.example .env
+php artisan key:generate
+php artisan migrate --seed
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 > *(Disponible en `http://127.0.0.1:8000/api/v1`)*
 
+Si `php artisan serve` no logra abrir el puerto (ocurre con algunas
+instalaciones de PHP en Windows), sirve el proyecto directamente desde
+`public`:
+```powershell
+cd public
+php -S 127.0.0.1:8000 -t . "..\vendor\laravel\framework\src\Illuminate\Foundation\resources\server.php"
+```
+
+Verifica el backend antes de arrancar el gateway:
+```powershell
+Invoke-WebRequest http://127.0.0.1:8000/api/v1/jobs -UseBasicParsing
+```
+
 ### Terminal 2: API REST Oficial en Next.js (Puerto 3000)
 Ubicarse en el directorio del proyecto Next.js e iniciar el servidor:
 ```powershell
-cd C:\xampp\htdocs\API-REST
+cd UniEmpleo\src\Api
 npm run dev
 # O para producción:
 npm run build
 npm run start
 ```
 > *(Disponible en `http://localhost:3000/api/v1`)*
+
+El gateway escucha en todas las interfaces (`0.0.0.0`) para que un dispositivo
+físico en la misma red pueda conectarse. Configura `EXPO_PUBLIC_API_URL` en la
+app con la IP LAN del equipo donde corre Next.js, por ejemplo
+`http://192.168.1.20:3000/api/v1`; `localhost` desde un teléfono apunta al mismo
+teléfono. En el emulador Android usa `http://10.0.2.2:3000/api/v1`.
+
+La app debe apuntar al gateway Next.js. `LARAVEL_API_URL` es solo para la
+conexión servidor a servidor del gateway hacia Laravel y debe contener el host
+base, sin `/api/v1`. Verifica primero `GET /api/v1` en el gateway: debe responder
+HTTP 200 con `data.architecture.laravel_connected: true`. Si Laravel no es
+alcanzable o no tiene `GET /api/v1/jobs`, responde HTTP 503 con estado `degraded`.
+Después prueba el login. No uses como `EXPO_PUBLIC_API_URL` un dominio que solo
+publique Laravel o la web.
+
+### Despliegue en Render
+
+Laravel y Next.js son servicios independientes. La guía
+[DEPLOY-RENDER.md](../../../../Bolsa-empleo-unipaz-main/DEPLOY-RENDER.md)
+describe bases de datos, variables de entorno, Docker, almacenamiento
+persistente, health checks y la configuración que debe llevar la build Expo.
+El dominio que se asigna a Next.js es el que se configura como
+`EXPO_PUBLIC_API_URL`; `LARAVEL_API_URL` es solo para la conexión interna del
+gateway con Laravel.
 
 ---
 
@@ -46,7 +87,7 @@ npm run start
 Para verificar el flujo completo de extremo a extremo (Autenticación, subida de CV en PDF, creación de vacante, postulación, bloqueo de duplicados 422, verificación de privacidad de `company_notes`, cambio de estado a entrevista y auditoría en Prisma ORM):
 
 ```powershell
-cd C:\xampp\htdocs\API-REST
+cd UniEmpleo\src\Api
 npm run test:sprint3
 ```
 
@@ -54,12 +95,15 @@ npm run test:sprint3
 
 ## 👥 Credenciales de Prueba
 
-| Rol | Correo Electrónico | Contraseña | Estado en Laravel |
-|---|---|---|---|
-| **Administrador** | `admin@unipaz.edu.co` | `AdminUNIPAZ2024*` | Activo |
-| **Empresa (Aprobada)** | `info@tecnosoluciones.edu.co` | `EmpresaUNIPAZ2024*` | Aprobada (`approved`) |
-| **Empresa (Pendiente)** | `contacto@distribuidoraregional.edu.co` | `EmpresaUNIPAZ2024*` | Pendiente (`pending`) |
-| **Estudiante** | `carlos.lopez@unipaz.edu.co` | `EstudianteUNIPAZ2024*` | Activo |
+No se guardan credenciales de prueba en el repositorio. Configura los usuarios y
+contraseñas de tu entorno en `TEST_STUDENT_EMAIL`, `TEST_STUDENT_PASSWORD`,
+`TEST_COMPANY_EMAIL`, `TEST_COMPANY_PASSWORD`, `TEST_ADMIN_EMAIL` y
+`TEST_ADMIN_PASSWORD` antes de ejecutar `npm run test:sprint3`. Usa cuentas de
+prueba aisladas, no cuentas personales o de producción.
+
+El seeder elimina los registros existentes y solo se ejecuta en entornos
+`development` o `test` cuando `ALLOW_DESTRUCTIVE_SEED=true` y las tres variables
+`SEED_*_PASSWORD` tienen contraseñas de al menos 16 caracteres.
 
 ---
 
@@ -112,3 +156,9 @@ Cada solicitud procesada por el cliente puente [`lib/laravel-bridge.ts`](file://
 - Tiempo de ejecución en milisegundos (`duration_ms`).
 - Correo del usuario autenticado (si aplica).
 - Dirección IP del cliente.
+
+La auditoría nunca bloquea la respuesta al cliente. Si MySQL no está disponible
+(por ejemplo, en un equipo de desarrollo que solo usa la base SQLite de Laravel),
+define `AUDIT_LOG_ENABLED="false"` en `src/Api/.env.local` para desactivarla y
+evitar errores de Prisma en cada solicitud. Cualquier otra ruta del gateway sigue
+funcionando porque la lógica de negocio vive en Laravel.

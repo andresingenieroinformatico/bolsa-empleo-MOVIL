@@ -1,11 +1,33 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Brand } from '@/constants/theme';
+
+const appTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Brand.green,
+    background: Brand.canvas,
+    card: Brand.surface,
+    text: Brand.ink,
+    border: Brand.line,
+    notification: Brand.red,
+  },
+};
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }} />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={appTheme}>
+        <StatusBar style="dark" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: Brand.canvas },
+          }}
+        />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

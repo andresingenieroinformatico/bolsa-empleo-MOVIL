@@ -227,12 +227,13 @@ export interface CompanyRegistrationInput {
   password: string;
   password_confirmation: string;
   company_name: string;
-  nit?: string;
-  sector: string;
+  nit: string;
   contact_person: string;
-  phone: string;
-  address: string;
-  description: string;
+  /** Optional at sign-up: the company completes these from its dashboard. */
+  sector?: string;
+  phone?: string;
+  address?: string;
+  description?: string;
 }
 
 export function registerCompany(
@@ -356,6 +357,30 @@ export function unwrapPage<T>(
   };
 }
 
+const MAX_LIST_PAGES = 50;
+
+/**
+ * Recorre todas las páginas de un listado para que las secciones muestren el
+ * histórico completo y sus indicadores no se limiten a la primera página.
+ */
+export async function fetchAllPages(
+  fetchPage: (page: number) => Promise<ApiEnvelope<unknown>>,
+  perPage = 20,
+): Promise<{ items: unknown[]; total: number }> {
+  const items: unknown[] = [];
+  let total = 0;
+
+  for (let page = 1; page <= MAX_LIST_PAGES; page += 1) {
+    const result = unwrapPage<unknown>(await fetchPage(page), page, perPage);
+    items.push(...result.items);
+    total = result.total ?? items.length;
+
+    if (!result.hasMore || result.items.length === 0) break;
+  }
+
+  return { items, total };
+}
+
 export interface JobSearchFilters {
   search?: string;
   modality?: string;
@@ -460,8 +485,10 @@ export function updateStudentProfile(
 
 export function getStudentApplications(
   token: string,
+  page = 1,
 ): Promise<ApiEnvelope<unknown>> {
-  return apiRequest<ApiEnvelope<unknown>>('applications/student', { token });
+  const query = new URLSearchParams({ page: String(readPageNumber(page, 1)) });
+  return apiRequest<ApiEnvelope<unknown>>(`applications/student?${query.toString()}`, { token });
 }
 
 export interface ApplyToJobInput {
@@ -535,8 +562,17 @@ export function updateCompanyProfile(
   });
 }
 
-export function getCompanyJobs(token: string): Promise<ApiEnvelope<unknown>> {
-  return apiRequest<ApiEnvelope<unknown>>('company/jobs', { token });
+export function getCompanyJobs(token: string, page = 1): Promise<ApiEnvelope<unknown>> {
+  const query = new URLSearchParams({ page: String(readPageNumber(page, 1)) });
+  return apiRequest<ApiEnvelope<unknown>>(`company/jobs?${query.toString()}`, { token });
+}
+
+export function getCompanySummary(token: string): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>('company/dashboard', { token });
+}
+
+export function getCompanyReports(token: string): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>('company/reports', { token });
 }
 
 export function createJob(
@@ -565,9 +601,11 @@ export function updateJob(
 export function getJobApplicants(
   token: string,
   jobId: string,
+  page = 1,
 ): Promise<ApiEnvelope<unknown>> {
+  const query = new URLSearchParams({ page: String(readPageNumber(page, 1)) });
   return apiRequest<ApiEnvelope<unknown>>(
-    `applications/job/${encodeURIComponent(jobId)}`,
+    `applications/job/${encodeURIComponent(jobId)}?${query.toString()}`,
     { token },
   );
 }
@@ -589,6 +627,24 @@ export function getPendingCompanies(
   return apiRequest<ApiEnvelope<unknown>>('admin/companies/pending', { token });
 }
 
+export function getAdminCompanies(
+  token: string,
+  filters: {
+    status?: 'pending' | 'approved' | 'rejected' | 'inactive';
+    search?: string;
+    page?: number;
+  } = {},
+): Promise<ApiEnvelope<unknown>> {
+  const query = new URLSearchParams();
+  if (filters.status) query.set('status', filters.status);
+  if (filters.search?.trim()) query.set('search', filters.search.trim());
+  if (filters.page !== undefined) {
+    query.set('page', String(readPageNumber(filters.page, 1)));
+  }
+  const suffix = query.size ? `?${query.toString()}` : '';
+  return apiRequest<ApiEnvelope<unknown>>(`admin/companies${suffix}`, { token });
+}
+
 export function updateCompanyApproval(
   token: string,
   companyId: string,
@@ -603,4 +659,178 @@ export function updateCompanyApproval(
       body: { aprobada: approved, reason },
     },
   );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Administración                                                            */
+/* -------------------------------------------------------------------------- */
+
+export interface AdminUserFilters {
+  role?: 'student' | 'company' | 'admin';
+  search?: string;
+  /** Filters by account access state. */
+  active?: boolean;
+  /** Filters by student profile completeness. */
+  profile?: 'complete' | 'incomplete';
+  page?: number;
+}
+
+export interface AdminJobFilters {
+  status?: 'active' | 'paused' | 'closed';
+  search?: string;
+  page?: number;
+}
+
+export function getAdminDashboard(token: string): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>('admin/dashboard', { token });
+}
+
+export function getAdminReports(token: string): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>('admin/reports', { token });
+}
+
+export function getAdminProfile(token: string): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>('admin/profile', { token });
+}
+
+export function updateAdminProfile(
+  token: string,
+  input: {
+    name: string;
+    email: string;
+    password?: string;
+    password_confirmation?: string;
+  },
+): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>('admin/profile', {
+    token,
+    method: 'PUT',
+    body: input,
+  });
+}
+
+export function getAdminUsers(
+  token: string,
+  filters: AdminUserFilters = {},
+): Promise<ApiEnvelope<unknown>> {
+  const query = new URLSearchParams();
+  if (filters.role) query.set('role', filters.role);
+  if (filters.search?.trim()) query.set('search', filters.search.trim());
+  if (filters.active !== undefined) query.set('active', filters.active ? '1' : '0');
+  if (filters.profile) query.set('profile', filters.profile);
+  if (filters.page !== undefined) {
+    query.set('page', String(readPageNumber(filters.page, 1)));
+  }
+  const suffix = query.size ? `?${query.toString()}` : '';
+  return apiRequest<ApiEnvelope<unknown>>(`admin/users${suffix}`, { token });
+}
+
+export function toggleAdminUser(
+  token: string,
+  userId: string,
+): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>(
+    `admin/users/${encodeURIComponent(userId)}/toggle`,
+    { token, method: 'PATCH' },
+  );
+}
+
+export interface AdminUserUpdateInput {
+  name: string;
+  email: string;
+  program: string;
+  semester?: string;
+  phone?: string;
+  studentCode?: string;
+  /** Optional new password. Requires confirmation. */
+  password?: string;
+  passwordConfirmation?: string;
+}
+
+export function updateAdminUser(
+  token: string,
+  userId: string,
+  input: AdminUserUpdateInput,
+): Promise<ApiEnvelope<unknown>> {
+  const password = input.password?.trim() ? input.password : undefined;
+  return apiRequest<ApiEnvelope<unknown>>(
+    `admin/users/${encodeURIComponent(userId)}`,
+    {
+      token,
+      method: 'PUT',
+      body: {
+        name: input.name.trim(),
+        email: input.email.trim(),
+        program: input.program.trim(),
+        semester: input.semester?.trim() || null,
+        phone: input.phone?.trim() || null,
+        student_code: input.studentCode?.trim() || null,
+        ...(password ? { password, password_confirmation: input.passwordConfirmation } : {}),
+      },
+    },
+  );
+}
+
+export function getAdminJobs(
+  token: string,
+  filters: AdminJobFilters = {},
+): Promise<ApiEnvelope<unknown>> {
+  const query = new URLSearchParams();
+  if (filters.status) query.set('status', filters.status);
+  if (filters.search?.trim()) query.set('search', filters.search.trim());
+  if (filters.page !== undefined) {
+    query.set('page', String(readPageNumber(filters.page, 1)));
+  }
+  const suffix = query.size ? `?${query.toString()}` : '';
+  return apiRequest<ApiEnvelope<unknown>>(`admin/jobs${suffix}`, { token });
+}
+
+export function toggleAdminJob(
+  token: string,
+  jobId: string,
+): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>(
+    `admin/jobs/${encodeURIComponent(jobId)}/toggle`,
+    { token, method: 'PATCH' },
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Notificaciones                                                            */
+/* -------------------------------------------------------------------------- */
+
+export function getNotifications(
+  token: string,
+  page = 1,
+): Promise<ApiEnvelope<unknown>> {
+  const query = new URLSearchParams();
+  query.set('page', String(readPageNumber(page, 1)));
+  return apiRequest<ApiEnvelope<unknown>>(`notifications?${query.toString()}`, {
+    token,
+  });
+}
+
+export function getNotificationsUnreadCount(
+  token: string,
+): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>('notifications/unread-count', { token });
+}
+
+export function markNotificationAsRead(
+  token: string,
+  notificationId: string,
+): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>(
+    `notifications/${encodeURIComponent(notificationId)}/read`,
+    { token, method: 'PATCH' },
+  );
+}
+
+export function markAllNotificationsAsRead(
+  token: string,
+): Promise<ApiEnvelope<unknown>> {
+  return apiRequest<ApiEnvelope<unknown>>('notifications/mark-all-read', {
+    token,
+    method: 'POST',
+  });
 }

@@ -3,17 +3,21 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
-  StatusBar,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { authenticateWithPassword, getAuthenticatedSession } from '@/services/api';
 import { AuthSession as StoredSession, saveAuthSession } from '@/services/auth-session';
 import { UserRole } from '@/data/mock-data';
+import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
+import { Icon, IconName } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Notice } from '@/components/ui/notice';
 
 interface LoginModalProps {
   visible: boolean;
@@ -86,68 +90,77 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
     setErrorMessage(null);
   };
 
+  const isBusy = loading || googleLoginLoading;
+
   return (
-    <Modal visible={visible} animationType="fade" onRequestClose={onClose}>
-      <View style={styles.screen}>
-        <StatusBar barStyle="light-content" />
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Ir a la página principal de UniEmpleo"
-          onPress={onGoHome}
-          style={styles.brand}>
-          <View style={styles.brandMark}>
-            <Text style={styles.brandMarkText}>💼</Text>
-          </View>
-          <Text style={styles.brandTitle}>
-            UNI<Text style={styles.brandAccent}>Empleo</Text>
-          </Text>
-          <Text style={styles.brandSubtitle}>UNIPAZ · BOLSA DE EMPLEO</Text>
-        </TouchableOpacity>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ir a la página principal de UniEmpleo"
+            onPress={onGoHome}
+            style={({ pressed }) => [styles.brand, pressed && styles.pressed]}>
+            <View style={styles.brandMark}>
+              <Icon name="briefcase" size={17} color={Brand.surface} />
+            </View>
+            <View>
+              <Text style={styles.brandTitle}>UniEmpleo</Text>
+              <Text style={styles.brandSubtitle}>UNIPAZ · BOLSA DE EMPLEO</Text>
+            </View>
+          </Pressable>
 
-        <View style={styles.card}>
-          <View style={styles.roleTabs}>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityState={{ selected: isStudent }}
-              style={[styles.roleTab, isStudent && styles.roleTabActive]}
-              onPress={() => selectRole('student')}>
-              <Text style={[styles.roleTabText, isStudent && styles.roleTabTextActive]}>
-                🎓  Estudiante
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar inicio de sesión"
+            onPress={onClose}
+            hitSlop={10}
+            style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
+            <Icon name="close" size={20} color={Brand.inkSoft} />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.card}>
+            <View style={styles.roleTabs}>
+              <RoleTab
+                label="Estudiante"
+                icon="school-outline"
+                active={isStudent}
+                onPress={() => selectRole('student')}
+              />
+              <RoleTab
+                label="Empresa"
+                icon="business-outline"
+                active={!isStudent}
+                onPress={() => selectRole('company')}
+              />
+            </View>
+
+            <View style={styles.heading}>
+              <Text style={styles.title}>
+                {isStudent ? 'Hola de nuevo' : 'Acceso a tu cuenta'}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityState={{ selected: !isStudent }}
-              style={[styles.roleTab, !isStudent && styles.roleTabActive]}
-              onPress={() => selectRole('company')}>
-              <Text style={[styles.roleTabText, !isStudent && styles.roleTabTextActive]}>
-                🏢  Empresa
+              <Text style={styles.subtitle}>
+                {isStudent
+                  ? 'Ingresa con tu cuenta institucional para ver vacantes y seguir tus postulaciones.'
+                  : 'Empresas, estudiantes y administradores ingresan con su correo y contraseña. La plataforma reconoce tu rol automáticamente.'}
               </Text>
-            </TouchableOpacity>
-          </View>
+            </View>
 
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.formContent}>
-            <Text style={styles.title}>
-              {isStudent ? 'Bienvenido, Estudiante' : 'Acceso Empresarial'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {isStudent
-                ? 'Usa tu cuenta Google institucional de UNIPAZ para acceder.'
-                : 'Ingresa las credenciales de tu empresa para publicar ofertas.'}
-            </Text>
-
-            {loading || googleLoginLoading ? (
+            {isBusy ? (
               <View style={styles.loadingBox}>
-                <ActivityIndicator size="large" color="#1552A0" />
+                <ActivityIndicator size="large" color={Brand.green} />
                 <Text style={styles.loadingText}>Validando la sesión con UniEmpleo…</Text>
               </View>
             ) : isStudent ? (
               <>
                 <View style={styles.securePanel}>
                   <View style={styles.secureIcon}>
-                    <Text style={styles.secureIconText}>🎓</Text>
+                    <Icon name="shield-checkmark" size={20} color={Brand.greenDark} />
                   </View>
                   <View style={styles.secureCopy}>
                     <Text style={styles.secureTitle}>Acceso seguro con Google</Text>
@@ -156,268 +169,304 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  style={[styles.googleButton, (!googleLoginReady || googleLoginLoading) && styles.buttonDisabled]}
-                  disabled={!googleLoginReady || googleLoginLoading}
-                  onPress={() => void handleGoogleLogin()}>
-                  <Text style={styles.googleIcon}>G</Text>
-                  <Text style={styles.googleButtonText}>Iniciar sesión con Google</Text>
-                </TouchableOpacity>
+
+                <Button
+                  label="Continuar con Google"
+                  onPress={() => void handleGoogleLogin()}
+                  variant="secondary"
+                  size="lg"
+                  icon="logo-google"
+                  disabled={!googleLoginReady}
+                  fullWidth
+                />
+
                 {!googleClientConfigured && (
-                  <Text style={styles.configurationText}>
-                    Falta configurar el acceso de Google para {Platform.OS}.
-                  </Text>
+                  <Notice
+                    tone="warning"
+                    message={`Falta configurar el acceso de Google para ${Platform.OS}.`}
+                  />
                 )}
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  style={styles.accountLink}
-                  onPress={onCreateAccount}>
-                  <Text style={styles.accountLinkText}>¿No tienes cuenta? </Text>
-                  <Text style={styles.accountLinkEmphasis}>Registrarse</Text>
-                </TouchableOpacity>
+
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchText}>¿Aún no tienes cuenta? </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Crear una cuenta"
+                    onPress={onCreateAccount}
+                    hitSlop={8}>
+                    <Text style={styles.switchAction}>Registrarse</Text>
+                  </Pressable>
+                </View>
               </>
             ) : (
               <>
-                <Text style={styles.inputLabel}>Correo</Text>
-                <TextInput
-                  style={styles.input}
+                <TextField
+                  label="Correo corporativo o institucional"
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="contacto@empresa.com"
+                  placeholder="contacto@empresa.com o correo institucional"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="email"
-                  accessibilityLabel="Correo de empresa"
+                  icon="mail-outline"
+                  clearable
+                  clearLabel="Borrar correo"
+                  accessibilityLabel="Correo de la cuenta"
                   returnKeyType="next"
                 />
-                <Text style={styles.inputLabel}>Contraseña</Text>
-                <TextInput
-                  style={styles.input}
+
+                <TextField
+                  label="Contraseña"
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Tu contraseña"
+                  icon="lock-closed-outline"
                   secureTextEntry
+                  secureToggle
+                  clearable
                   autoComplete="current-password"
                   accessibilityLabel="Contraseña"
                   returnKeyType="done"
                   onSubmitEditing={() => void handlePasswordLogin()}
                 />
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  style={[styles.loginButton, (!email.trim() || !password) && styles.buttonDisabled]}
+
+                <Button
+                  label="Ingresar"
+                  onPress={() => void handlePasswordLogin()}
+                  size="lg"
+                  iconRight="arrow-forward"
                   disabled={!email.trim() || !password}
-                  onPress={() => void handlePasswordLogin()}>
-                  <Text style={styles.loginButtonText}>Ingresar  ›</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  style={styles.accountLink}
-                  onPress={onCreateAccount}>
-                  <Text style={styles.accountLinkText}>¿Tu empresa aún no está registrada? </Text>
-                  <Text style={styles.accountLinkEmphasis}>Registrarse</Text>
-                </TouchableOpacity>
+                  fullWidth
+                  style={styles.submit}
+                />
+
+                <View style={styles.switchRow}>
+                  <Text style={styles.switchText}>¿Tu empresa aún no está registrada? </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Registrar mi empresa"
+                    onPress={onCreateAccount}
+                    hitSlop={8}>
+                    <Text style={styles.switchAction}>Registrarse</Text>
+                  </Pressable>
+                </View>
               </>
             )}
 
-            {errorMessage && (
-              <View accessibilityRole="alert" style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
-              </View>
-            )}
-          </ScrollView>
-          <Text style={styles.footer}>Universidad de La Paz — UNIPAZ © 2024</Text>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar inicio de sesión"
-            onPress={onClose}
-            style={styles.closeButton}>
-            <Text style={styles.closeText}>Volver</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            {errorMessage ? (
+              <Notice
+                tone="error"
+                message={errorMessage}
+                onDismiss={() => setErrorMessage(null)}
+              />
+            ) : null}
+          </View>
+
+          <Text style={styles.footer}>Universidad de La Paz · UNIPAZ</Text>
+        </ScrollView>
+      </SafeAreaView>
     </Modal>
   );
 };
 
+interface RoleTabProps {
+  label: string;
+  icon: IconName;
+  active: boolean;
+  onPress: () => void;
+}
+
+function RoleTab({ label, icon, active, onPress }: RoleTabProps) {
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.roleTab,
+        active && styles.roleTabActive,
+        pressed && styles.pressed,
+      ]}>
+      <Icon name={icon} size={17} color={active ? Brand.greenDark : Brand.slateSoft} />
+      <Text style={[styles.roleTabText, active && styles.roleTabTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#154E9B',
+    backgroundColor: Brand.canvas,
+  },
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Space.xl,
+    paddingVertical: Space.md,
+    gap: 12,
   },
   brand: {
-    width: '100%',
-    maxWidth: 440,
-    minHeight: 205,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 16,
-    gap: 7,
+    gap: 10,
+    flexShrink: 1,
   },
   brandMark: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: '#31A052',
+    width: 36,
+    height: 36,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.green,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
-  brandMarkText: { color: '#FFFFFF', fontSize: 30, fontWeight: '700' },
-  brandTitle: { color: '#FFFFFF', fontSize: 27, fontWeight: '800', letterSpacing: -0.8 },
-  brandAccent: { color: '#63D983' },
-  brandSubtitle: { color: '#D5E4F9', fontSize: 11, letterSpacing: 1.1 },
+  brandTitle: {
+    ...Type.heading,
+    color: Brand.ink,
+    fontSize: 17,
+    letterSpacing: -0.35,
+  },
+  brandSubtitle: {
+    ...Type.overline,
+    fontSize: 8,
+    color: Brand.slateSoft,
+    marginTop: 1,
+  },
+  closeButton: {
+    width: 38,
+    height: 38,
+    borderRadius: Radius.pill,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.75,
+  },
+  body: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingHorizontal: Space.lg,
+    paddingTop: Space.sm,
+    paddingBottom: Space.xxl,
+    gap: Space.lg,
+  },
   card: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
     width: '100%',
-    maxWidth: 440,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 22,
-    paddingTop: 20,
-    paddingBottom: 18,
-    overflow: 'hidden',
+    maxWidth: 460,
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.sheet,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    padding: Space.xl,
+    gap: Space.lg,
+    ...Shadows.card,
   },
   roleTabs: {
     flexDirection: 'row',
-    backgroundColor: '#EDF2FB',
-    borderRadius: 14,
+    backgroundColor: Brand.surfaceSunken,
+    borderRadius: Radius.lg,
     padding: 4,
-    marginBottom: 24,
+    gap: 4,
   },
   roleTab: {
     flex: 1,
-    minHeight: 42,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 11,
+    gap: 6,
+    minHeight: 40,
+    borderRadius: Radius.md,
   },
   roleTabActive: {
-    backgroundColor: '#104B9B',
-    shadowColor: '#12366D',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: Brand.surface,
+    ...Shadows.card,
   },
-  roleTabText: { color: '#526781', fontSize: 13, fontWeight: '600' },
-  roleTabTextActive: { color: '#FFFFFF', fontWeight: '700' },
-  formContent: { flexGrow: 1 },
-  title: {
-    fontSize: 21,
+  roleTabText: {
+    ...Type.label,
+    color: Brand.slate,
+  },
+  roleTabTextActive: {
+    color: Brand.ink,
     fontWeight: '800',
-    color: '#122846',
-    marginBottom: 5,
+  },
+  heading: {
+    gap: 5,
+  },
+  title: {
+    ...Type.title,
+    color: Brand.ink,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#607492',
-    lineHeight: 18,
-    marginBottom: 24,
+    ...Type.body,
+    color: Brand.slate,
   },
   securePanel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 13,
-    padding: 14,
-    marginBottom: 20,
-    backgroundColor: '#EAF6EE',
+    gap: 12,
+    padding: Space.md,
+    backgroundColor: Brand.greenTint,
     borderWidth: 1,
-    borderColor: '#C8E8D2',
-    borderRadius: 15,
+    borderColor: Brand.greenLine,
+    borderRadius: Radius.lg,
   },
   secureIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
+    width: 42,
+    height: 42,
+    borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#329D51',
+    backgroundColor: Brand.surface,
   },
-  secureIconText: { color: '#FFFFFF', fontSize: 21, fontWeight: '700' },
-  secureCopy: { flex: 1, gap: 3 },
-  secureTitle: { color: '#17603A', fontSize: 12, fontWeight: '700' },
-  secureDescription: { color: '#39724E', fontSize: 10, lineHeight: 15 },
-  googleButton: {
-    minHeight: 50,
-    borderWidth: 1,
-    borderColor: '#C9D8F0',
-    borderRadius: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    shadowColor: '#183B70',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    elevation: 2,
+  secureCopy: {
+    flex: 1,
+    gap: 2,
   },
-  googleIcon: { color: '#4285F4', fontSize: 17, fontWeight: '900' },
-  googleButtonText: { color: '#172A45', fontSize: 13, fontWeight: '700' },
-  configurationText: { color: '#92400E', fontSize: 11, lineHeight: 16, marginTop: 10 },
-  accountLink: {
+  secureTitle: {
+    ...Type.bodyStrong,
+    color: Brand.greenDeep,
+  },
+  secureDescription: {
+    ...Type.caption,
+    color: '#39724E',
+  },
+  switchRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     flexWrap: 'wrap',
-    paddingTop: 22,
-  },
-  accountLinkText: { color: '#657995', fontSize: 12 },
-  accountLinkEmphasis: { color: '#168345', fontSize: 12, fontWeight: '700' },
-  inputLabel: {
-    color: '#172A45',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 7,
-  },
-  input: {
-    minHeight: 48,
-    backgroundColor: '#F4F7FD',
-    borderWidth: 1,
-    borderColor: '#D4E0F4',
-    borderRadius: 14,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    fontSize: 13,
-    color: '#172A45',
-    marginBottom: 15,
-  },
-  loginButton: {
-    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1554A6',
-    borderRadius: 14,
-    marginTop: 3,
-    shadowColor: '#12467F',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  loginButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
-  buttonDisabled: { opacity: 0.55 },
+  switchText: {
+    ...Type.caption,
+    color: Brand.slate,
+  },
+  switchAction: {
+    ...Type.caption,
+    color: Brand.greenDark,
+    fontWeight: '800',
+  },
   loadingBox: {
-    minHeight: 180,
+    minHeight: 190,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
   },
-  loadingText: { fontSize: 13, color: '#607492', fontWeight: '500' },
-  errorBox: {
-    marginTop: 16,
-    backgroundColor: '#FEF2F2',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FECACA',
+  loadingText: {
+    ...Type.body,
+    color: Brand.slate,
+    fontWeight: '500',
   },
-  errorText: { color: '#991B1B', fontSize: 12, fontWeight: '600', lineHeight: 17 },
-  footer: { color: '#9BAFCF', textAlign: 'center', fontSize: 10, paddingTop: 18 },
-  closeButton: { alignSelf: 'center', paddingTop: 8, paddingHorizontal: 12 },
-  closeText: { color: '#607492', fontSize: 11, fontWeight: '600' },
+  submit: {
+    marginTop: 2,
+  },
+  footer: {
+    ...Type.caption,
+    color: Brand.slateSoft,
+    textAlign: 'center',
+  },
 });

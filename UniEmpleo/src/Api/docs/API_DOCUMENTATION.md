@@ -4,6 +4,12 @@
 **Base URL Gateway (Next.js):** `http://localhost:3000/api/v1`  
 **Backend Core (Laravel):** `http://127.0.0.1:8000/api/v1`
 
+En producción, configura `CORS_ALLOWED_ORIGINS` como una lista separada por comas
+de los orígenes web autorizados. Si no se configura, el gateway no habilita CORS
+para orígenes externos en producción; Expo nativo no necesita CORS. En desarrollo
+se permiten los orígenes locales de Expo (`localhost` y `127.0.0.1`, puertos
+8081 y 19006).
+
 ---
 
 ## 1. Módulo de Autenticación (`/api/v1/auth`)
@@ -15,8 +21,8 @@
 - **Cuerpo (JSON):**
 ```json
 {
-  "email": "carlos.lopez@unipaz.edu.co",
-  "password": "EstudianteUNIPAZ2024*"
+  "email": "Carlos.lopez@unipaz.edu.co",
+  "password": "<contraseña-de-prueba-configurada>"
 }
 ```
 - **Respuesta Exitosa (200 OK):**
@@ -29,7 +35,7 @@
     "user": {
       "id": 4,
       "name": "Carlos Andrés López",
-      "email": "carlos.lopez@unipaz.edu.co",
+      "email": "Carlos.lopez@unipaz.edu.co",
       "role": "student",
       "student_profile": {
         "id": 1,
@@ -65,22 +71,19 @@ empresas y administradores ingresan con correo y contraseña.
 ### 1.3 Registro de Empresas
 - **Método:** `POST`
 - **URL:** `/api/v1/auth/register/company` (o `/api/v1/auth/register-company`)
-- **Cuerpo (JSON):**
+- **Cuerpo (JSON):** solo se envían los datos esenciales. `sector`, `phone`, `address` y `description` son opcionales en el registro y se completan después con `PUT /api/v1/companies/profile`.
 ```json
 {
-  "name": "Contacto RRHH",
+  "name": "Andrés Morales",
   "email": "contacto@nuevapetrolera.com",
   "password": "PasswordEmpresa123*",
   "password_confirmation": "PasswordEmpresa123*",
   "company_name": "Servicios Petroleros del Oriente S.A.S.",
   "nit": "901.888.777-1",
-  "sector": "Petróleo y Gas",
-  "contact_person": "Andrés Morales",
-  "phone": "+57 310 999 8888",
-  "address": "Zona Industrial, Barrancabermeja",
-  "description": "Empresa dedicada a la prestación de servicios técnicos y de mantenimiento."
+  "contact_person": "Andrés Morales"
 }
 ```
+- **Campos obligatorios:** `name`, `email`, `password`, `password_confirmation`, `company_name` y `nit`.
 - **Respuesta (201 Created):** Empresa creada con estado `pending` a la espera de aprobación institucional.
 
 ### 1.4 Consultar Usuario Autenticado
@@ -116,6 +119,8 @@ empresas y administradores ingresan con correo y contraseña.
 - **URL:** `/api/v1/students/upload-cv` (o `/api/v1/student/profile/cv`)
 - **Headers:** `Authorization: Bearer <TOKEN_ESTUDIANTE>`, `Content-Type: multipart/form-data`
 - **FormData:** Clave `cv` (archivo `.pdf`, máx 5MB).
+- El gateway valida el tamaño máximo y la firma `%PDF-` del archivo antes de
+  reenviarlo al backend.
 - **Respuesta Exitosa (200 OK):**
 ```json
 {
@@ -155,6 +160,19 @@ empresas y administradores ingresan con correo y contraseña.
 - **Método:** `GET` / `PUT`
 - **URL:** `/api/v1/companies/profile`
 - **Headers:** `Authorization: Bearer <TOKEN_EMPRESA>`
+- **Respuesta (GET):** Debe incluir `company_name`, `nit`, `sector`, `contact_person`, `phone`, `address` y `description` para que la app detecte los datos pendientes.
+- **Cuerpo (PUT):** Completa el registro iniciado en `auth/register/company`.
+```json
+{
+  "company_name": "Servicios Petroleros del Oriente S.A.S.",
+  "nit": "901.888.777-1",
+  "sector": "Petróleo y Gas",
+  "contact_person": "Andrés Morales",
+  "phone": "+57 310 999 8888",
+  "address": "Zona Industrial, Barrancabermeja",
+  "description": "Empresa dedicada a la prestación de servicios técnicos y de mantenimiento."
+}
+```
 
 ---
 

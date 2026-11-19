@@ -2,23 +2,28 @@ import React, { useState } from 'react';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   FlatList,
-  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { SkeletonBlock } from '@/components/SkeletonBlock';
-import {
-  Application,
-  JobOffer,
-  StudentProfile,
-} from '@/data/mock-data';
+import { Application, JobOffer, StudentProfile } from '@/data/mock-data';
 import { ApiDocument, JobSearchFilters } from '@/services/api';
+import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
+import { Icon, IconName } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
+import { Avatar } from '@/components/ui/avatar';
+import { Sheet } from '@/components/ui/sheet';
+import { TextField } from '@/components/ui/text-field';
+import { Notice } from '@/components/ui/notice';
+import { InfoRow } from '@/components/ui/info-row';
+import { formatDate, pluralize } from '@/lib/format';
 
 interface VacantesViewProps {
   jobs: JobOffer[];
@@ -36,6 +41,8 @@ interface VacantesViewProps {
   ) => Promise<void>;
 }
 
+const MODALITIES = ['Todas', 'Remoto', 'Presencial', 'Híbrido'];
+
 export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
   jobs,
   student,
@@ -51,7 +58,6 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
   const [locationQuery, setLocationQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Modal de Detalle (HU-04) y Postulación (HU-05)
   const [selectedJob, setSelectedJob] = useState<JobOffer | null>(null);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [useProfileCv, setUseProfileCv] = useState(true);
@@ -61,7 +67,6 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
   const [applySuccess, setApplySuccess] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
 
-  const modalities = ['Todas', 'Remoto', 'Presencial', 'Híbrido'];
   const filteredJobs = jobs.filter((job) => job.status === 'active');
   const currentFilters: JobSearchFilters = {
     search: searchQuery,
@@ -111,7 +116,6 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
   const handleConfirmApply = async () => {
     if (!selectedJob) return;
 
-    // Criterio HU-05 Escenario 3: Verificación de postulación duplicada
     if (isAlreadyApplied(selectedJob.id)) {
       setApplyError('Ya te has postulado previamente a esta vacante. No se pueden crear postulaciones duplicadas.');
       return;
@@ -177,475 +181,464 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
     }
   };
 
+  const applied = selectedJob ? isAlreadyApplied(selectedJob.id) : false;
+
   return (
     <View style={styles.container}>
-      <View style={styles.searchBarContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar por cargo, empresa o tecnología..."
-          placeholderTextColor="#9CA3AF"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          returnKeyType="search"
-          onSubmitEditing={() => void handleSearch()}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Limpiar búsqueda" onPress={() => setSearchQuery('')}>
-            <Text style={styles.clearSearch}>✕</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.locationRow}>
-        <TextInput
-          style={styles.locationInput}
-          placeholder="Ciudad o ubicación"
-          placeholderTextColor="#9CA3AF"
-          value={locationQuery}
-          onChangeText={setLocationQuery}
-          returnKeyType="search"
-          onSubmitEditing={() => void handleSearch()}
-        />
-        <TouchableOpacity
-          accessibilityRole="button"
-          disabled={isLoading}
-          style={[styles.searchButton, isLoading && styles.disabledButton]}
-          onPress={() => void handleSearch()}>
-          <Text style={styles.searchButtonText}>{isLoading ? 'Buscando…' : 'Buscar'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScroll}>
-        <View style={styles.filterGroup}>
-          <Text style={styles.filterLabel}>Modalidad:</Text>
-          {modalities.map((modality) => (
-            <TouchableOpacity
-              key={modality}
-              style={[
-                styles.chip,
-                selectedModality === modality && styles.chipActive,
-              ]}
-              onPress={() => setSelectedModality(modality)}>
-              <Text
-                style={[
-                  styles.chipText,
-                  selectedModality === modality && styles.chipTextActive,
-                ]}>
-                {modality}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-
-      {searchError && (
-        <Text accessibilityRole="alert" style={styles.searchError}>{searchError}</Text>
-      )}
-
       <FlatList
+        style={styles.list}
         data={filteredJobs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={isLoading ? (
-          <View
-            accessibilityRole="progressbar"
-            accessibilityLabel="Cargando vacantes"
-            style={styles.loadingState}>
-            {Array.from({ length: 3 }, (_, index) => (
-              <View key={`job-skeleton-${index}`} style={styles.skeletonCard}>
-                <View style={styles.skeletonHeader}>
-                  <SkeletonBlock style={styles.skeletonCompany} />
-                  <SkeletonBlock style={styles.skeletonBadge} />
-                </View>
-                <SkeletonBlock style={styles.skeletonTitle} />
-                <SkeletonBlock style={styles.skeletonDescription} />
-                <SkeletonBlock style={styles.skeletonFooter} />
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <View style={styles.searchCard}>
+              <View style={styles.searchRow}>
+                <Icon name="search-outline" size={19} color={Brand.slateSoft} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Cargo, empresa o tecnología"
+                  placeholderTextColor={Brand.slateFaint}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  returnKeyType="search"
+                  onSubmitEditing={() => void handleSearch()}
+                  accessibilityLabel="Buscar vacantes"
+                />
+                {searchQuery.length > 0 && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Limpiar búsqueda"
+                    hitSlop={8}
+                    onPress={() => setSearchQuery('')}>
+                    <Icon name="close-circle" size={18} color={Brand.slateFaint} />
+                  </Pressable>
+                )}
               </View>
-            ))}
+
+              <View style={styles.searchDivider} />
+
+              <View style={styles.locationRow}>
+                <View style={styles.locationField}>
+                  <Icon name="location-outline" size={17} color={Brand.slateSoft} />
+                  <TextInput
+                    style={styles.locationInput}
+                    placeholder="Ciudad o ubicación"
+                    placeholderTextColor={Brand.slateFaint}
+                    value={locationQuery}
+                    onChangeText={setLocationQuery}
+                    returnKeyType="search"
+                    onSubmitEditing={() => void handleSearch()}
+                    accessibilityLabel="Ciudad o ubicación"
+                  />
+                </View>
+                <Button
+                  label={isLoading ? 'Buscando…' : 'Buscar'}
+                  onPress={() => void handleSearch()}
+                  icon="search"
+                  size="sm"
+                />
+              </View>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScroll}>
+              <Text style={styles.filterLabel}>Modalidad</Text>
+              {MODALITIES.map((modality) => (
+                <Chip
+                  key={modality}
+                  label={modality}
+                  selected={selectedModality === modality}
+                  tone="green"
+                  onPress={() => setSelectedModality(modality)}
+                />
+              ))}
+            </ScrollView>
+
+            <View style={styles.resultsRow}>
+              <Text style={styles.resultsText}>
+                {pluralize(filteredJobs.length, 'vacante disponible', 'vacantes disponibles')}
+              </Text>
+              {(searchQuery || locationQuery || selectedModality !== 'Todas') && (
+                <Pressable accessibilityRole="button" onPress={handleClearFilters} hitSlop={6}>
+                  <Text style={styles.clearFilters}>Limpiar filtros</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {searchError ? <Notice tone="error" message={searchError} /> : null}
           </View>
-        ) : (
-          <EmptyState
-            icon="📋"
-            title="No hay vacantes disponibles"
-            description="No encontramos ofertas que coincidan con tu búsqueda. Intenta cambiar los filtros."
-            actionLabel="Limpiar filtros"
-            onAction={handleClearFilters}
-          />
-        )}
-        ListFooterComponent={hasMoreJobs ? (
+        }
+        ListEmptyComponent={
           isLoading ? (
-            <View accessibilityRole="progressbar" accessibilityLabel="Cargando más vacantes">
-              <SkeletonBlock style={styles.skeletonLoadMore} />
+            <View
+              accessibilityRole="progressbar"
+              accessibilityLabel="Cargando vacantes"
+              style={styles.loadingState}>
+              {Array.from({ length: 3 }, (_, index) => (
+                <View key={`job-skeleton-${index}`} style={styles.skeletonCard}>
+                  <View style={styles.skeletonHeader}>
+                    <SkeletonBlock style={styles.skeletonCompany} />
+                    <SkeletonBlock style={styles.skeletonBadge} />
+                  </View>
+                  <SkeletonBlock style={styles.skeletonTitle} />
+                  <SkeletonBlock style={styles.skeletonDescription} />
+                  <SkeletonBlock style={styles.skeletonFooter} />
+                </View>
+              ))}
             </View>
           ) : (
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={styles.loadMoreButton}
-              onPress={() => void handleLoadMore()}>
-              <Text style={styles.loadMoreText}>Cargar más vacantes</Text>
-            </TouchableOpacity>
+            <EmptyState
+              icon="briefcase-outline"
+              title="No hay vacantes para mostrar"
+              description="No encontramos ofertas que coincidan con tu búsqueda. Prueba con otros filtros o vuelve más tarde."
+              actionLabel="Limpiar filtros"
+              onAction={handleClearFilters}
+            />
           )
-        ) : undefined}
+        }
+        ListFooterComponent={
+          hasMoreJobs ? (
+            isLoading ? (
+              <View accessibilityRole="progressbar" accessibilityLabel="Cargando más vacantes">
+                <SkeletonBlock style={styles.skeletonLoadMore} />
+              </View>
+            ) : (
+              <Button
+                label="Cargar más vacantes"
+                variant="secondary"
+                onPress={() => void handleLoadMore()}
+                icon="chevron-down"
+                fullWidth
+              />
+            )
+          ) : filteredJobs.length > 0 ? (
+            <Text style={styles.listEnd}>Has visto todas las vacantes disponibles.</Text>
+          ) : undefined
+        }
         renderItem={({ item }) => {
-          const applied = isAlreadyApplied(item.id);
+          const alreadyApplied = isAlreadyApplied(item.id);
           return (
-            <TouchableOpacity
-              style={styles.card}
-              activeOpacity={0.9}
-              onPress={() => handleOpenJobDetail(item)}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardHeaderLeft}>
-                  <Text style={styles.companyName}>{item.companyName}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title} en ${item.companyName}`}
+              onPress={() => handleOpenJobDetail(item)}
+              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+              <View style={styles.cardTop}>
+                <Avatar name={item.companyName} size={42} tone="green" />
+                <View style={styles.cardTopCopy}>
+                  <Text style={styles.companyName} numberOfLines={1}>
+                    {item.companyName}
+                  </Text>
                   <Text style={styles.jobTitle}>{item.title}</Text>
                 </View>
-                {applied ? (
-                  <StatusBadge status="pending" label="Postulado" size="small" />
-                ) : (
-                  <StatusBadge status="active" label={item.modality} size="small" />
-                )}
+                <StatusBadge
+                  status={alreadyApplied ? 'pending' : 'active'}
+                  label={alreadyApplied ? 'Postulado' : item.modality}
+                  size="small"
+                />
               </View>
 
               <Text style={styles.descriptionSnippet} numberOfLines={2}>
                 {item.description}
               </Text>
 
-              <View style={styles.tagsRow}>
-                <View style={styles.tagBadge}>
-                  <Text style={styles.tagText}>🎓 {item.program}</Text>
-                </View>
-                <View style={styles.tagBadge}>
-                  <Text style={styles.tagText}>💼 {item.contractType}</Text>
-                </View>
+              <View style={styles.metaRow}>
+                <JobMeta icon="school-outline" label={item.program} />
+                <JobMeta icon="briefcase-outline" label={item.contractType} />
+                <JobMeta icon="location-outline" label={item.location} />
               </View>
 
               <View style={styles.cardFooter}>
-                <Text style={styles.deadLineText}>
-                  📅 Límite: {item.deadline}
-                </Text>
-                <Text style={styles.viewDetailsText}>Ver detalle →</Text>
+                <View style={styles.footerMeta}>
+                  <Icon name="calendar-outline" size={13} color={Brand.slateSoft} />
+                  <Text style={styles.deadline}>Cierra {formatDate(item.deadline)}</Text>
+                </View>
+                <View style={styles.detailLink}>
+                  <Text style={styles.detailLinkText}>Ver detalle</Text>
+                  <Icon name="arrow-forward" size={14} color={Brand.greenDark} />
+                </View>
               </View>
-            </TouchableOpacity>
+            </Pressable>
           );
         }}
       />
 
-      {/* Modal de Detalle de Vacante (HU-04) */}
-      <Modal
+      <Sheet
         visible={selectedJob !== null && !showApplyModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedJob(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedJob && (
-              <>
-                <View style={styles.modalTopRow}>
-                  <Text style={styles.modalCompany}>{selectedJob.companyName}</Text>
-                  <TouchableOpacity
-                    onPress={() => setSelectedJob(null)}
-                    style={styles.closeModalBtn}>
-                    <Text style={styles.closeModalText}>✕</Text>
-                  </TouchableOpacity>
+        onClose={() => setSelectedJob(null)}
+        title={selectedJob?.title}
+        subtitle={selectedJob?.companyName}
+        icon="briefcase-outline"
+        closeLabel="Cerrar detalle de la vacante"
+        footer={
+          selectedJob ? (
+            applied ? (
+              <Notice
+                tone="success"
+                message="Ya estás postulado a esta vacante. Puedes seguir el proceso desde Postulaciones."
+              />
+            ) : (
+              <Button
+                label="Postularme a esta vacante"
+                onPress={() => setShowApplyModal(true)}
+                size="lg"
+                iconRight="arrow-forward"
+                fullWidth
+              />
+            )
+          ) : null
+        }>
+        {selectedJob ? (
+          <>
+            <View style={styles.badgeRow}>
+              <StatusBadge status="active" label={selectedJob.modality} />
+              <StatusBadge status="pending" label={selectedJob.contractType} />
+            </View>
+
+            <Text style={styles.sheetSectionTitle}>Descripción del cargo</Text>
+            <Text style={styles.bodyText}>{selectedJob.description}</Text>
+
+            <Text style={styles.sheetSectionTitle}>Requisitos</Text>
+            <View style={styles.reqList}>
+              {selectedJob.requirements.map((req, idx) => (
+                <View key={idx} style={styles.reqItem}>
+                  <Icon name="checkmark-circle" size={16} color={Brand.green} />
+                  <Text style={styles.reqText}>{req}</Text>
                 </View>
+              ))}
+            </View>
 
-                <Text style={styles.modalTitle}>{selectedJob.title}</Text>
+            <Text style={styles.sheetSectionTitle}>Detalles de la oferta</Text>
+            <View style={styles.infoCard}>
+              <InfoRow icon="location-outline" label="Ubicación" value={selectedJob.location} />
+              <InfoRow icon="calendar-outline" label="Cierre" value={formatDate(selectedJob.deadline)} />
+              <InfoRow
+                icon="document-text-outline"
+                label="Hoja de vida"
+                value={selectedJob.requiresCv ? 'Obligatoria (PDF, máx. 5 MB)' : 'No obligatoria'}
+                last
+              />
+            </View>
+          </>
+        ) : null}
+      </Sheet>
 
-                <View style={styles.modalBadgesRow}>
-                  <StatusBadge status="active" label={selectedJob.modality} />
-                  <StatusBadge status="pending" label={selectedJob.contractType} />
-                </View>
-
-                <ScrollView style={styles.modalBody}>
-                  <Text style={styles.sectionHeading}>Descripción del cargo</Text>
-                  <Text style={styles.modalText}>{selectedJob.description}</Text>
-
-                  <Text style={styles.sectionHeading}>Requisitos</Text>
-                  {selectedJob.requirements.map((req, idx) => (
-                    <Text key={idx} style={styles.bulletItem}>
-                      • {req}
-                    </Text>
-                  ))}
-
-                  <Text style={styles.sectionHeading}>Ubicación y Fechas</Text>
-                  <Text style={styles.modalText}>📍 {selectedJob.location}</Text>
-                  <Text style={styles.modalText}>
-                    📅 Postulaciones abiertas hasta el {selectedJob.deadline}
-                  </Text>
-                  <Text style={styles.modalText}>
-                    📄 Requiere hoja de vida: {selectedJob.requiresCv ? 'Sí (PDF max 5MB)' : 'No obligatoria'}
-                  </Text>
-                </ScrollView>
-
-                <View style={styles.modalActions}>
-                  {isAlreadyApplied(selectedJob.id) ? (
-                    <View style={styles.appliedBanner}>
-                      <Text style={styles.appliedBannerText}>
-                        ✅ Ya estás postulado a esta vacante
-                      </Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.primaryBtn}
-                      activeOpacity={0.85}
-                      onPress={() => setShowApplyModal(true)}>
-                      <Text style={styles.primaryBtnText}>Postularme a esta vacante</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal de Postulación con Selección de Hoja de Vida (HU-05) */}
-      <Modal
+      <Sheet
         visible={showApplyModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowApplyModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedJob && (
-              <>
-                <View style={styles.modalTopRow}>
-                  <Text style={styles.tag}>HU-05 · Postulación</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowApplyModal(false)}
-                    style={styles.closeModalBtn}>
-                    <Text style={styles.closeModalText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
+        onClose={() => setShowApplyModal(false)}
+        title="Confirmar postulación"
+        subtitle={
+          selectedJob ? `${selectedJob.title} · ${selectedJob.companyName}` : undefined
+        }
+        icon="send-outline"
+        closeLabel="Cerrar postulación"
+        footer={
+          <Button
+            label={isApplying ? 'Enviando…' : 'Enviar mi postulación'}
+            onPress={() => void handleConfirmApply()}
+            loading={isApplying}
+            size="lg"
+            iconRight="send"
+            fullWidth
+          />
+        }>
+        <Text style={styles.sheetSectionTitle}>Hoja de vida</Text>
 
-                <Text style={styles.modalTitle}>Confirmar Postulación</Text>
-                <Text style={styles.modalSubtitle}>
-                  {selectedJob.title} en {selectedJob.companyName}
-                </Text>
-
-                <Text style={styles.sectionHeading}>Opciones de Hoja de Vida</Text>
-
-                {/* Opción 1: Usar CV de perfil (Criterio Escenario 4) */}
-                <TouchableOpacity
-                  style={[styles.cvOptionCard, useProfileCv && styles.cvOptionActive]}
-                  onPress={() => {
-                    setUseProfileCv(true);
-                    setUploadedCv(null);
-                    setApplyError(null);
-                  }}>
-                  <Text style={styles.radioIcon}>{useProfileCv ? '🔘' : '⚪'}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cvOptionTitle}>Usar el CV de mi perfil</Text>
-                    <Text style={styles.cvOptionDesc}>
-                      {student.cvFile?.name || 'No has cargado una hoja de vida'}
-                      {student.cvFile?.sizeMb ? ` (${student.cvFile.sizeMb} MB)` : ''}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Opción 2: Adjuntar archivo nuevo */}
-                <TouchableOpacity
-                  style={[styles.cvOptionCard, !useProfileCv && styles.cvOptionActive]}
-                  onPress={() => {
-                    setUseProfileCv(false);
-                    setApplyError(null);
-                  }}>
-                  <Text style={styles.radioIcon}>{!useProfileCv ? '🔘' : '⚪'}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cvOptionTitle}>Adjuntar otra hoja de vida</Text>
-                    <Text style={styles.cvOptionDesc}>
-                      {uploadedCv
-                        ? `Seleccionado: ${uploadedCv.name}`
-                        : 'Selecciona un archivo PDF (máximo 5 MB)'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                {!useProfileCv && (
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    style={styles.simulatorBtn}
-                    onPress={() => void handleChooseCv()}>
-                    <Text style={styles.simulatorBtnText}>
-                      {uploadedCv ? 'Elegir otro PDF' : 'Seleccionar PDF'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <View style={styles.coverLetterSection}>
-                  <Text style={styles.sectionHeading}>Carta de presentación (opcional)</Text>
-                  <TextInput
-                    accessibilityLabel="Carta de presentación, máximo 2.000 caracteres"
-                    style={styles.coverLetterInput}
-                    value={coverLetter}
-                    onChangeText={setCoverLetter}
-                    placeholder="Cuéntale a la empresa por qué te interesa esta oportunidad."
-                    multiline
-                    maxLength={2000}
-                  />
-                  <Text style={styles.characterCount}>{coverLetter.length}/2000</Text>
-                </View>
-
-                {applyError && (
-                  <View style={styles.errorAlert}>
-                    <Text style={styles.errorAlertText}>⚠️ {applyError}</Text>
-                  </View>
-                )}
-
-                {applySuccess && (
-                  <View style={styles.successAlert}>
-                    <Text style={styles.successAlertText}>✅ {applySuccess}</Text>
-                  </View>
-                )}
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.primaryBtn}
-                    disabled={isApplying}
-                    onPress={() => void handleConfirmApply()}>
-                    <Text style={styles.primaryBtnText}>
-                      {isApplying ? 'Enviando…' : 'Enviar mi postulación'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+        <Pressable
+          accessibilityRole="radio"
+          accessibilityState={{ checked: useProfileCv }}
+          onPress={() => {
+            setUseProfileCv(true);
+            setUploadedCv(null);
+            setApplyError(null);
+          }}
+          style={[styles.cvOption, useProfileCv && styles.cvOptionActive]}>
+          <Icon
+            name={useProfileCv ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color={useProfileCv ? Brand.greenDark : Brand.slateFaint}
+          />
+          <View style={styles.cvOptionCopy}>
+            <Text style={styles.cvOptionTitle}>Usar el CV de mi perfil</Text>
+            <Text style={styles.cvOptionDesc}>
+              {student.cvFile?.name || 'Aún no has cargado una hoja de vida'}
+              {student.cvFile?.sizeMb ? ` · ${student.cvFile.sizeMb} MB` : ''}
+            </Text>
           </View>
-        </View>
-      </Modal>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="radio"
+          accessibilityState={{ checked: !useProfileCv }}
+          onPress={() => {
+            setUseProfileCv(false);
+            setApplyError(null);
+          }}
+          style={[styles.cvOption, !useProfileCv && styles.cvOptionActive]}>
+          <Icon
+            name={!useProfileCv ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color={!useProfileCv ? Brand.greenDark : Brand.slateFaint}
+          />
+          <View style={styles.cvOptionCopy}>
+            <Text style={styles.cvOptionTitle}>Adjuntar otra hoja de vida</Text>
+            <Text style={styles.cvOptionDesc}>
+              {uploadedCv
+                ? `Seleccionado: ${uploadedCv.name}`
+                : 'Selecciona un archivo PDF (máximo 5 MB)'}
+            </Text>
+          </View>
+        </Pressable>
+
+        {!useProfileCv ? (
+          <Button
+            label={uploadedCv ? 'Elegir otro PDF' : 'Seleccionar PDF'}
+            variant="tonal"
+            size="sm"
+            icon="cloud-upload-outline"
+            onPress={() => void handleChooseCv()}
+          />
+        ) : null}
+
+        <TextField
+          label="Carta de presentación"
+          optionalLabel={`${coverLetter.length}/2000`}
+          value={coverLetter}
+          onChangeText={setCoverLetter}
+          placeholder="Cuéntale a la empresa por qué te interesa esta oportunidad."
+          multiline
+          maxLength={2000}
+          numberOfLines={4}
+        />
+
+        {applyError ? (
+          <Notice tone="error" message={applyError} onDismiss={() => setApplyError(null)} />
+        ) : null}
+
+        {applySuccess ? <Notice tone="success" message={applySuccess} /> : null}
+      </Sheet>
     </View>
   );
 };
+
+function JobMeta({ icon, label }: { icon: IconName; label: string }) {
+  return (
+    <View style={styles.metaItem}>
+      <Icon name={icon} size={13} color={Brand.slateSoft} />
+      <Text style={styles.metaText} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    maxWidth: 960,
-    alignSelf: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: Brand.canvas,
   },
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    height: 46,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 4,
-  },
-  locationInput: {
-    minHeight: 44,
+  list: {
     flex: 1,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    color: '#1A1F36',
-    fontSize: 13,
-  },
-  searchButton: {
-    minWidth: 88,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: '#00963F',
-  },
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  searchError: {
-    marginHorizontal: 16,
-    color: '#991B1B',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1A1F36',
-  },
-  clearSearch: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    fontWeight: '700',
-    padding: 4,
-  },
-  filterScroll: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-  },
-  filterGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6B7280',
-    marginRight: 4,
-  },
-  chip: {
-    backgroundColor: '#E5E7EB',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-  },
-  chipActive: {
-    backgroundColor: '#00963F',
-  },
-  chipText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    width: '100%',
   },
   listContent: {
     width: '100%',
     maxWidth: 920,
     alignSelf: 'center',
-    padding: 16,
-    paddingBottom: 40,
-    gap: 12,
+    padding: Space.lg,
+    paddingBottom: Space.huge,
+    gap: Space.md,
+  },
+  header: {
+    gap: Space.md,
+    marginBottom: Space.xs,
+  },
+  searchCard: {
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    padding: Space.md,
+    gap: Space.sm,
+    ...Shadows.card,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 2,
+  },
+  searchInput: {
+    flex: 1,
+    ...Type.body,
+    color: Brand.ink,
+    paddingVertical: 8,
+  },
+  searchDivider: {
+    height: 1,
+    backgroundColor: Brand.lineSoft,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  locationField: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 40,
+    paddingHorizontal: 10,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.surfaceMuted,
+  },
+  locationInput: {
+    flex: 1,
+    ...Type.body,
+    fontSize: 13,
+    color: Brand.ink,
+    paddingVertical: 8,
+  },
+  filterScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  filterLabel: {
+    ...Type.label,
+    color: Brand.slateSoft,
+    marginRight: 2,
+  },
+  resultsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  resultsText: {
+    ...Type.caption,
+    color: Brand.slate,
+  },
+  clearFilters: {
+    ...Type.label,
+    color: Brand.greenDark,
   },
   loadingState: {
     gap: 12,
   },
   skeletonCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xl,
+    padding: Space.lg,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Brand.line,
     gap: 10,
   },
   skeletonHeader: {
@@ -660,313 +653,158 @@ const styles = StyleSheet.create({
   skeletonFooter: { width: '48%', height: 10, marginTop: 4 },
   skeletonLoadMore: {
     height: 44,
-    borderRadius: 8,
+    borderRadius: Radius.lg,
   },
-  loadMoreButton: {
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#10235F',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  loadMoreText: {
-    color: '#10235F',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  disabledButton: {
-    opacity: 0.6,
+  listEnd: {
+    ...Type.caption,
+    color: Brand.slateSoft,
+    textAlign: 'center',
+    paddingVertical: Space.md,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xl,
+    padding: Space.lg,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Brand.line,
+    gap: 10,
+    ...Shadows.card,
   },
-  cardHeader: {
+  cardPressed: {
+    opacity: 0.9,
+  },
+  cardTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    gap: 12,
   },
-  cardHeaderLeft: {
+  cardTopCopy: {
     flex: 1,
-    marginRight: 8,
+    gap: 2,
   },
   companyName: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    ...Type.overline,
+    fontSize: 9,
+    color: Brand.greenDark,
   },
   jobTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1F36',
-    marginTop: 2,
+    ...Type.heading,
+    fontSize: 16.5,
+    color: Brand.ink,
   },
   descriptionSnippet: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
-    marginBottom: 10,
+    ...Type.body,
+    color: Brand.slate,
   },
-  tagsRow: {
+  metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 10,
   },
-  tagBadge: {
-    backgroundColor: '#E6F7ED',
-    borderWidth: 1,
-    borderColor: '#E6F7ED',
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingVertical: 4,
+    backgroundColor: Brand.surfaceMuted,
+    borderRadius: Radius.sm,
+    maxWidth: '100%',
   },
-  tagText: {
-    fontSize: 11,
-    color: '#00963F',
-    fontWeight: '600',
+  metaText: {
+    ...Type.caption,
+    fontSize: 10.5,
+    color: Brand.slate,
+    flexShrink: 1,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#F4F5F7',
+    borderTopColor: Brand.lineSoft,
     paddingTop: 10,
+    gap: 8,
   },
-  deadLineText: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  viewDetailsText: {
-    fontSize: 12,
-    color: '#00963F',
-    fontWeight: '700',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
-    maxHeight: '85%',
-  },
-  modalTopRow: {
+  footerMeta: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    gap: 5,
+    flexShrink: 1,
   },
-  modalCompany: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  tag: {
+  deadline: {
+    ...Type.caption,
     fontSize: 11,
-    fontWeight: '700',
-    color: '#00963F',
-    backgroundColor: '#E6F7ED',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    color: Brand.slate,
   },
-  closeModalBtn: {
-    padding: 6,
+  detailLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  closeModalText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    fontWeight: '700',
-  },
-  modalTitle: {
-    fontSize: 20,
+  detailLinkText: {
+    ...Type.label,
+    color: Brand.greenDark,
     fontWeight: '800',
-    color: '#1A1F36',
-    marginBottom: 4,
   },
-  modalSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  modalBadgesRow: {
+  badgeRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 14,
+    flexWrap: 'wrap',
   },
-  modalBody: {
-    maxHeight: 320,
+  sheetSectionTitle: {
+    ...Type.heading,
+    color: Brand.ink,
+    marginTop: 4,
   },
-  sectionHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1F36',
-    marginTop: 12,
-    marginBottom: 6,
+  bodyText: {
+    ...Type.body,
+    color: Brand.slate,
   },
-  modalText: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 20,
-    marginBottom: 4,
+  reqList: {
+    gap: 8,
   },
-  bulletItem: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 20,
-    marginLeft: 6,
+  reqItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
   },
-  modalActions: {
-    marginTop: 16,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F4F5F7',
+  reqText: {
+    ...Type.body,
+    color: Brand.slate,
+    flex: 1,
   },
-  coverLetterSection: {
-    marginTop: 12,
-    gap: 6,
-  },
-  coverLetterInput: {
-    minHeight: 90,
-    padding: 10,
+  infoCard: {
+    backgroundColor: Brand.surfaceMuted,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    color: '#1A1F36',
-    fontSize: 13,
-    textAlignVertical: 'top',
+    borderColor: Brand.lineSoft,
+    paddingHorizontal: Space.md,
   },
-  characterCount: {
-    color: '#6B7280',
-    fontSize: 11,
-    textAlign: 'right',
-  },
-  primaryBtn: {
-    backgroundColor: '#00963F',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  primaryBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  appliedBanner: {
-    backgroundColor: '#E6F7ED',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#34D399',
-  },
-  appliedBannerText: {
-    color: '#007832',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  cvOptionCard: {
+  cvOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F4F5F7',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 8,
     gap: 10,
+    padding: Space.md,
+    backgroundColor: Brand.surfaceMuted,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Brand.line,
   },
   cvOptionActive: {
-    borderColor: '#00963F',
-    backgroundColor: '#E6F7ED',
+    borderColor: Brand.greenLine,
+    backgroundColor: Brand.greenTint,
   },
-  radioIcon: {
-    fontSize: 18,
+  cvOptionCopy: {
+    flex: 1,
+    gap: 2,
   },
   cvOptionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1F36',
+    ...Type.bodyStrong,
+    color: Brand.ink,
   },
   cvOptionDesc: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  fileSimulatorRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
-  },
-  simulatorBtn: {
-    flex: 1,
-    backgroundColor: '#E0F2FE',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  simulatorBtnText: {
-    fontSize: 11,
-    color: '#0369A1',
-    fontWeight: '600',
-  },
-  simulatorErrorBtn: {
-    backgroundColor: '#FEE2E2',
-  },
-  simulatorErrorText: {
-    fontSize: 11,
-    color: '#B91C1C',
-    fontWeight: '600',
-  },
-  errorAlert: {
-    backgroundColor: '#FEF2F2',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  errorAlertText: {
-    color: '#B91C1C',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  successAlert: {
-    backgroundColor: '#E6F7ED',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: '#34D399',
-  },
-  successAlertText: {
-    color: '#007832',
-    fontSize: 12,
-    fontWeight: '600',
+    ...Type.caption,
+    color: Brand.slate,
   },
 });

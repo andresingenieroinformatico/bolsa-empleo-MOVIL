@@ -18,32 +18,44 @@ export interface TokenPayload {
 }
 
 export function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+  return bcrypt.hash(password, 12);
 }
 
 export function comparePassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(payload: TokenPayload, expiresIn: any = "7d"): string {
-  return jwt.sign(payload, getJwtSecret(), { expiresIn } as jwt.SignOptions);
+export function signToken(
+  payload: TokenPayload,
+  expiresIn: jwt.SignOptions["expiresIn"] = "7d"
+): string {
+  return jwt.sign(payload, getJwtSecret(), { expiresIn, algorithm: "HS256" });
 }
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, getJwtSecret()) as TokenPayload;
-  } catch (error) {
+    const payload: unknown = jwt.verify(token, getJwtSecret(), { algorithms: ["HS256"] });
+    if (!payload || typeof payload !== "object") return null;
+    const candidate = payload as Record<string, unknown>;
+    if (
+      !Number.isSafeInteger(candidate.userId) || Number(candidate.userId) < 1 ||
+      typeof candidate.email !== "string" ||
+      (candidate.role !== "admin" && candidate.role !== "company" && candidate.role !== "student")
+    ) return null;
+    return candidate as unknown as TokenPayload;
+  } catch {
     return null;
   }
 }
 
 export async function getAuthenticatedUser(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  const match = authHeader?.match(/^Bearer\s+(\S+)$/i);
+  if (!match) {
     return null;
   }
 
-  const token = authHeader.split(" ")[1];
+  const token = match[1];
   const payload = verifyToken(token);
   if (!payload || !payload.userId) {
     return null;
@@ -61,5 +73,6 @@ export async function getAuthenticatedUser(request: NextRequest) {
     return null;
   }
 
-  return user;
+  const { password: _password, ...safeUser } = user;
+  return safeUser;
 }

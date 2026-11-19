@@ -20,6 +20,30 @@
     {
       "key": "admin_token",
       "value": ""
+    },
+    {
+      "key": "student_email",
+      "value": ""
+    },
+    {
+      "key": "student_password",
+      "value": ""
+    },
+    {
+      "key": "company_email",
+      "value": ""
+    },
+    {
+      "key": "company_password",
+      "value": ""
+    },
+    {
+      "key": "admin_email",
+      "value": ""
+    },
+    {
+      "key": "admin_password",
+      "value": ""
     }
   ],
   "item": [
@@ -33,7 +57,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"carlos.lopez@unipaz.edu.co\",\n  \"password\": \"EstudianteUNIPAZ2024*\"\n}"
+              "raw": "{\n  \"email\": \"{{student_email}}\",\n  \"password\": \"{{student_password}}\"\n}"
             },
             "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] }
           }
@@ -45,7 +69,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"info@tecnosoluciones.edu.co\",\n  \"password\": \"EmpresaUNIPAZ2024*\"\n}"
+              "raw": "{\n  \"email\": \"{{company_email}}\",\n  \"password\": \"{{company_password}}\"\n}"
             },
             "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] }
           }
@@ -57,7 +81,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@unipaz.edu.co\",\n  \"password\": \"AdminUNIPAZ2024*\"\n}"
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
             },
             "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] }
           }

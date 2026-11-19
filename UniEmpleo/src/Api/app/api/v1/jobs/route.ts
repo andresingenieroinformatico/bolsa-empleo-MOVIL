@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forwardToLaravel } from "@/lib/laravel-bridge";
-import { mapProgramsTargeted } from "@/lib/job-input";
+import { mapJobPayload } from "@/lib/job-input";
+import { validationError } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -43,38 +44,14 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const body = parsed as Record<string, unknown>;
-
-  const mod = String(body.modality || body.modalidad || "").toLowerCase();
-  let modality = "onsite";
-  if (mod.includes("remot")) modality = "remote";
-  else if (mod.includes("hibrid") || mod.includes("híbrid")) modality = "hybrid";
-  const defaultDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
-  const positions = Number.parseInt(String(body.positions || 1), 10);
-
-  const laravelBody = {
-    title: body.title || body.titulo || "Vacante sin título",
-    description: body.description || body.descripcion || "Descripción detallada de la oferta laboral.",
-    requirements: body.requirements || body.requisitos || body.descripcion || "Requisitos mínimos del perfil requerido.",
-    responsibilities: body.responsibilities || body.responsabilidades || body.descripcion || "Responsabilidades y funciones del cargo.",
-    area: body.area || "Tecnología e informática",
-    contract_type: body.contract_type || body.tipo_contrato || "Término fijo",
-    modality,
-    schedule: body.schedule || body.horario || null,
-    location: body.location || body.ubicacion || "Barrancabermeja",
-    salary_range: body.salary_range || (body.salario ? String(body.salario) : "$ 2.000.000 COP"),
-    salary_negotiable: body.salary_negotiable !== undefined ? Boolean(body.salary_negotiable) : false,
-    positions: Number.isNaN(positions) ? 1 : positions,
-    deadline: body.deadline || defaultDeadline,
-    requires_cv: body.requires_cv !== undefined ? Boolean(body.requires_cv) : true,
-    programs_targeted: mapProgramsTargeted(body),
-  };
+  const mapped = mapJobPayload(parsed as Record<string, unknown>);
+  if (!mapped.success) {
+    return validationError("Los datos de la vacante no son válidos.", mapped.errors);
+  }
 
   return forwardToLaravel(request, {
     path: "/api/v1/company/jobs",
     method: "POST",
-    body: laravelBody,
+    body: mapped.data,
   });
 }

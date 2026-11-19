@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -H 0.0.0.0",
     "lint": "next lint",
+    "test:unit": "tsx --test tests/job-input.test.ts",
     "test:sprint3": "tsx tests/test-flow-sprint3.ts"
   },
   "prisma": {

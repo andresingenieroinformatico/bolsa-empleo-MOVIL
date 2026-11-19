@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { forwardToLaravel } from "@/lib/laravel-bridge";
+import { invalidNotificationIdResponse } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,9 @@ export async function PUT(
       method: "POST",
     });
   }
+
+  const invalidId = invalidNotificationIdResponse(params.id);
+  if (invalidId) return invalidId;
 
   return forwardToLaravel(request, {
     path: `/api/v1/notifications/${params.id}/read`,

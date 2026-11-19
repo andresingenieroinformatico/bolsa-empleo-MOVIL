@@ -1,16 +1,23 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Brand, Radius, Type } from '@/constants/theme';
+import { Icon, IconName } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
 
 interface EmptyStateProps {
-  icon?: string;
+  icon?: IconName;
   title: string;
   description: string;
   actionLabel?: string;
   onAction?: () => void;
 }
 
+/**
+ * Empty / zero-result state. Deliberately calm: a tinted glyph, a short
+ * headline and one clear next action.
+ */
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  icon = '🔍',
+  icon = 'search-outline',
   title,
   description,
   actionLabel,
@@ -18,58 +25,61 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>{icon}</Text>
+      <View style={styles.iconWrap}>
+        <Icon name={icon} size={26} color={Brand.greenDark} />
+      </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
-      {actionLabel && onAction && (
-        <TouchableOpacity style={styles.button} onPress={onAction} activeOpacity={0.8}>
-          <Text style={styles.buttonText}>{actionLabel}</Text>
-        </TouchableOpacity>
-      )}
+      {actionLabel && onAction ? (
+        <Button
+          label={actionLabel}
+          onPress={onAction}
+          variant="tonal"
+          size="sm"
+          style={styles.button}
+        />
+      ) : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 32,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F4F5F7',
-    borderRadius: 16,
-    marginVertical: 16,
+    backgroundColor: Brand.surface,
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Brand.line,
     borderStyle: 'dashed',
+    marginVertical: 8,
+    gap: 4,
   },
-  icon: {
-    fontSize: 44,
-    marginBottom: 12,
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: Radius.xl,
+    backgroundColor: Brand.greenTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1F36',
+    ...Type.heading,
+    color: Brand.ink,
     textAlign: 'center',
-    marginBottom: 6,
   },
   description: {
-    fontSize: 14,
-    color: '#6B7280',
+    ...Type.caption,
+    color: Brand.slate,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 19,
     maxWidth: 280,
+    marginTop: 2,
   },
   button: {
-    marginTop: 16,
-    backgroundColor: '#00963F',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 13,
+    marginTop: 14,
   },
 });

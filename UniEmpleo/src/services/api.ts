@@ -15,7 +15,7 @@ export function resolveApiBaseUrl(configuredUrl: string | undefined): string {
   const value = configuredUrl?.trim();
   if (!value) {
     throw new Error(
-      'Falta configurar EXPO_PUBLIC_API_URL con la URL del gateway de la API.',
+      'Falta configurar EXPO_PUBLIC_API_URL con la URL de la API Laravel.',
     );
   }
 
@@ -93,13 +93,13 @@ export async function apiRequest<T>(
       (typeof body?.message === 'string' && body.message) ||
       (typeof body?.error?.message === 'string' && body.error.message) ||
       (response.status === 404
-        ? 'La ruta no fue encontrada (404). Verifica que el gateway publique las rutas /api/v1 y que la URL base sea correcta.'
+        ? 'La ruta no fue encontrada (404). Verifica que Laravel publique las rutas /api/v1 y que la URL base sea correcta.'
         : `La API respondió con el estado ${response.status}.`);
 
     throw new ApiError(message, response.status);
   }
 
-  return responseBody as T;
+  return normalizeApiSuccessResponse(responseBody) as T;
 }
 
 export interface ApiUser {
@@ -135,6 +135,31 @@ function isApiUser(value: unknown): value is ApiUser {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeApiSuccessResponse(data: unknown): unknown {
+  if (!isRecord(data)) {
+    return { success: true, data };
+  }
+  if (typeof data.success === 'boolean') {
+    return data;
+  }
+
+  const message = typeof data.message === 'string' ? { message: data.message } : {};
+  if (
+    Array.isArray(data.data) &&
+    ('current_page' in data || 'per_page' in data || 'total' in data)
+  ) {
+    return { success: true, ...message, data };
+  }
+  if ('data' in data) {
+    return { success: true, ...message, data: data.data };
+  }
+  if ('message' in data) {
+    return { success: true, ...message, data: null };
+  }
+
+  return { success: true, data };
 }
 
 export function getAuthenticatedSession(
@@ -207,7 +232,7 @@ export async function authenticateWithGoogle(
 ): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('auth/google', {
     method: 'POST',
-    body: { id_token: idToken },
+    body: { id_token: idToken, device_name: 'UniEmpleo' },
   });
 }
 
@@ -217,7 +242,7 @@ export async function authenticateWithPassword(
 ): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('auth/login', {
     method: 'POST',
-    body: { email, password },
+    body: { email, password, device_name: 'UniEmpleo' },
   });
 }
 

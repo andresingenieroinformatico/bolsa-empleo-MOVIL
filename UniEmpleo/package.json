@@ -5,10 +5,12 @@
   "dependencies": {
     "@expo/ui": "~58.0.28",
     "@expo/vector-icons": "^15.0.2",
+    "@react-native-google-signin/google-signin": "^17.0.0",
     "expo": "^58.0.0",
     "expo-auth-session": "~58.0.18",
     "expo-constants": "~58.0.16",
     "expo-crypto": "~58.0.8",
+    "expo-dev-client": "~58.0.21",
     "expo-device": "~58.0.5",
     "expo-document-picker": "~58.0.5",
     "expo-font": "~58.0.12",
@@ -42,8 +44,8 @@
     "start": "expo start",
     "dev": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"
   },

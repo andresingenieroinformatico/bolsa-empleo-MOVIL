@@ -1,10 +1,17 @@
 import { useState } from 'react';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { authenticateWithGoogle, getAuthenticatedSession } from '@/services/api';
 import { AuthSession as StoredSession, saveAuthSession } from '@/services/auth-session';
 
 type GoogleSignInModule = typeof import('@react-native-google-signin/google-signin');
 
 function loadGoogleSignIn(): GoogleSignInModule {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    throw new Error(
+      'Google Sign-In no está disponible en Expo Go. Para probar ahora, usa correo y contraseña; Google requiere una build de desarrollo.',
+    );
+  }
+
   try {
     // Load only when requested so Expo Go can still open the rest of the app.
     // eslint-disable-next-line @typescript-eslint/no-require-imports

@@ -45,8 +45,10 @@ iOS and web continue to use browser OAuth and need their respective
 values. Restart Metro with `npx expo start -c` after changing local
 environment variables.
 
-The native Android account chooser cannot run in Expo Go. After installing
-dependencies, generate and install a development build with
+Expo Go cannot run the native Google account chooser or test this app's Google
+OAuth redirect locally. Use email and password while running in Expo Go. To
+test Google sign-in, generate and install a development build after installing
+dependencies with
 `npx expo run:android`; rebuilding and reinstalling the app is required whenever
 native dependencies change. Restarting Metro only updates JavaScript and does
 not add native modules to an already-installed app. For later sessions, start

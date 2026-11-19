@@ -55,8 +55,12 @@ not add native modules to an already-installed app. For later sessions, start
 Metro with `npx expo start --dev-client`.
 On Windows, keep the project path ASCII-only (for example,
 `C:\dev\UniEmpleo`) because the Android native build tools fail on paths with
-accented characters. Register the SHA-1 shown by `.\gradlew signingReport`
-from the `android` directory in the Android OAuth client settings.
+accented characters. Windows long-path support must also be enabled; the
+`expo-build-properties` config pins CMake 3.31.6 to use a Ninja version that
+supports long paths. After changing this setting, regenerate Android with
+`npx expo prebuild --clean --platform android`. Register the SHA-1 shown by
+`.\gradlew signingReport` from the `android` directory in the Android OAuth
+client settings.
 
 For a local gateway on a physical phone, use the computer's LAN IP instead of
 `localhost`. For an Android emulator, use `http://10.0.2.2:3000/api/v1`.

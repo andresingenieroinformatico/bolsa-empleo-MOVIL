@@ -68,6 +68,18 @@ test("does not convert Laravel error responses into successful envelopes", () =>
   assert.deepEqual(normalizeLaravelResponse(401, error), error);
 });
 
+test("preserves Laravel validation fields for mobile registration and login", () => {
+  const validationError = {
+    message: "The email field is required.",
+    errors: {
+      email: ["The email field is required."],
+      password: ["The password field is required."],
+    },
+  };
+
+  assert.deepEqual(normalizeLaravelResponse(422, validationError), validationError);
+});
+
 test("requires a valid Laravel base URL instead of silently targeting localhost", () => {
   assert.throws(() => resolveLaravelApiBaseUrl(undefined), /LARAVEL_API_URL/);
   assert.throws(() => resolveLaravelApiBaseUrl("ftp://api.example.test"), /HTTP o HTTPS/);

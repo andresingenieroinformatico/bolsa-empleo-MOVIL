@@ -87,14 +87,26 @@ export async function apiRequest<T>(
   const responseBody: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const body = responseBody as
-      | { message?: unknown; error?: { message?: unknown } }
+      | {
+          message?: unknown;
+          error?: { message?: unknown };
+          errors?: Record<string, unknown>;
+        }
       | null;
+    const validationMessages = body?.errors
+      ? Object.values(body.errors)
+          .flatMap((value) => (Array.isArray(value) ? value : [value]))
+          .filter((value): value is string => typeof value === 'string')
+      : [];
     const message =
+      (validationMessages[0]) ||
       (typeof body?.message === 'string' && body.message) ||
       (typeof body?.error?.message === 'string' && body.error.message) ||
       (response.status === 404
         ? 'La ruta no fue encontrada (404). Verifica que Laravel publique las rutas /api/v1 y que la URL base sea correcta.'
-        : `La API respondió con el estado ${response.status}.`);
+        : response.status === 429
+          ? 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.'
+          : `La API respondió con el estado ${response.status}.`);
 
     throw new ApiError(message, response.status);
   }

@@ -90,6 +90,14 @@ export function useStudentGoogleLogin({ onAuthenticated }: StudentGoogleLoginPro
         if (code === googleSignIn.statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
           throw new Error('Google Play Services no está disponible o requiere una actualización.');
         }
+        if (code === googleSignIn.statusCodes.IN_PROGRESS) {
+          throw new Error('Google Sign-In ya está en proceso. Intenta nuevamente.');
+        }
+        if (String(code) === '10') {
+          throw new Error(
+            'Google rechazó esta instalación. Verifica que el paquete com.unipaz.uniempleo y la huella SHA-1 de la clave de producción estén registrados en el cliente Android de Google Cloud.',
+          );
+        }
       }
       throw error;
     } finally {

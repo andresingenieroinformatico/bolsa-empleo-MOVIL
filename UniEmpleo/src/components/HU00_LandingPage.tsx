@@ -6,16 +6,32 @@ import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Icon } from '@/components/ui/icon';
+import { Notice } from '@/components/ui/notice';
 
 interface LandingPageProps {
   jobs: JobOffer[];
   hasSession: boolean;
+  sessionRole?: UserRole | null;
+  userName?: string;
   isLoading: boolean;
   errorMessage?: string | null;
+  sessionNotice?: string | null;
+  onDismissSessionNotice?: () => void;
   onExplore: () => void;
   onLogin: (role: UserRole) => void;
   onCreateAccount: () => void;
+  /** Continues in the section the user was viewing before going home. */
+  onResumeSession?: () => void;
+  /** Opens the main dashboard of the signed-in role. */
+  onOpenDashboard?: () => void;
+  onLogout?: () => void;
 }
+
+const SESSION_ROLE_LABEL: Record<UserRole, string> = {
+  student: 'Estudiante',
+  company: 'Empresa',
+  admin: 'Administrador',
+};
 
 const STEPS = [
   { number: '01', title: 'Explora', copy: 'Filtra por área, modalidad y jornada.' },
@@ -26,11 +42,18 @@ const STEPS = [
 export function HU00_LandingPage({
   jobs,
   hasSession,
+  sessionRole,
+  userName,
   isLoading,
   errorMessage,
+  sessionNotice,
+  onDismissSessionNotice,
   onExplore,
   onLogin,
   onCreateAccount,
+  onResumeSession,
+  onOpenDashboard,
+  onLogout,
 }: LandingPageProps) {
   const { width } = useWindowDimensions();
   const wide = width >= 860;
@@ -53,15 +76,78 @@ export function HU00_LandingPage({
           </View>
 
           <View style={styles.navigationActions}>
-            <Button
-              label="Iniciar sesión"
-              variant="ghost"
-              size="sm"
-              onPress={() => onLogin('student')}
-            />
-            <Button label="Registrarse" variant="primary" size="sm" onPress={onCreateAccount} />
+            {hasSession && (onOpenDashboard || onResumeSession) ? (
+              <Button
+                label="Mi panel"
+                variant="primary"
+                size="sm"
+                iconRight="arrow-forward"
+                onPress={onOpenDashboard ?? onResumeSession}
+              />
+            ) : (
+              <>
+                <Button
+                  label="Iniciar sesión"
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => onLogin('student')}
+                />
+                <Button
+                  label="Registrarse"
+                  variant="primary"
+                  size="sm"
+                  onPress={onCreateAccount}
+                />
+              </>
+            )}
           </View>
         </View>
+
+        {sessionNotice ? (
+          <View style={styles.sessionNoticeWrap}>
+            <Notice
+              tone="info"
+              title="Sesión cerrada"
+              message={sessionNotice}
+              onDismiss={onDismissSessionNotice}
+            />
+          </View>
+        ) : null}
+
+        {hasSession && sessionRole ? (
+          <View style={styles.sessionBar}>
+            <View style={styles.sessionState}>
+              <View style={styles.sessionDot} />
+              <View style={styles.sessionCopy}>
+                <Text style={styles.sessionTitle}>Sesión activa</Text>
+                <Text style={styles.sessionMeta} numberOfLines={1}>
+                  {SESSION_ROLE_LABEL[sessionRole]}
+                  {userName ? ` · ${userName}` : ''}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.sessionActions}>
+              {onResumeSession ? (
+                <Button
+                  label="Continuar"
+                  variant="secondary"
+                  size="sm"
+                  iconRight="arrow-forward"
+                  onPress={onResumeSession}
+                />
+              ) : null}
+              {onLogout ? (
+                <Button
+                  label="Cerrar sesión"
+                  variant="ghost"
+                  size="sm"
+                  icon="log-out-outline"
+                  onPress={onLogout}
+                />
+              ) : null}
+            </View>
+          </View>
+        ) : null}
 
         <View style={[styles.hero, wide && styles.heroWide]}>
           <View style={styles.heroGlow} />
@@ -357,6 +443,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  sessionNoticeWrap: {
+    marginBottom: Space.sm,
+  },
+  sessionBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: Space.md,
+    marginBottom: Space.sm,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Brand.greenLine,
+    backgroundColor: Brand.greenTint,
+  },
+  sessionState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  sessionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: Radius.pill,
+    backgroundColor: Brand.greenDark,
+  },
+  sessionCopy: {
+    flexShrink: 1,
+    gap: 1,
+  },
+  sessionTitle: {
+    ...Type.label,
+    color: Brand.greenDeep,
+    fontWeight: '800',
+  },
+  sessionMeta: {
+    ...Type.caption,
+    color: '#39724E',
+  },
+  sessionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   hero: {
     position: 'relative',

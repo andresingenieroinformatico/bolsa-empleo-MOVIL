@@ -13,7 +13,7 @@ import { Notice } from '@/components/ui/notice';
 import { SectionHeader } from '@/components/ui/section-header';
 import { CompanyProfileCompletionSheet } from '@/components/CompanyProfileCompletionSheet';
 import { getMissingCompanyProfileFields } from '@/lib/company-profile';
-import { pluralize } from '@/lib/format';
+import { formatDate, pluralize } from '@/lib/format';
 
 const JOB_MODALITIES: JobModality[] = ['Presencial', 'Remoto', 'Híbrido'];
 const CONTRACT_TYPES: ContractType[] = [
@@ -73,7 +73,8 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
 
   const companyJobs = jobs.filter((job) => job.companyId === company.id);
-  const blocked = company.status !== 'approved' && !editingJob;
+  const isRestricted = company.status !== 'approved';
+  const blocked = isRestricted && !editingJob;
 
   const openCreateForm = () => {
     setEditingJob(null);
@@ -227,6 +228,21 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
               icon="add"
               fullWidth
             />
+            {isRestricted ? (
+              <Notice
+                tone={company.status === 'rejected' ? 'error' : 'warning'}
+                title={
+                  company.status === 'rejected'
+                    ? 'Gestión de vacantes deshabilitada'
+                    : 'Publicación pendiente de aprobación'
+                }
+                message={
+                  company.status === 'rejected'
+                    ? 'Corrige la información de tu empresa desde la pestaña Empresa y guarda los cambios para reenviar la solicitud.'
+                    : 'Podrás publicar, editar y pausar vacantes cuando UNIPAZ apruebe tu cuenta.'
+                }
+              />
+            ) : null}
             {actionError ? (
               <Notice tone="error" message={actionError} onDismiss={() => setActionError(null)} />
             ) : null}
@@ -272,13 +288,14 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
             <View style={styles.cardFooter}>
               <View style={styles.deadline}>
                 <Icon name="calendar-outline" size={13} color={Brand.slateSoft} />
-                <Text style={styles.deadlineText}>Cierra el {item.deadline}</Text>
+                <Text style={styles.deadlineText}>Cierra el {formatDate(item.deadline)}</Text>
               </View>
               <View style={styles.actions}>
                 <Button
                   label={item.status === 'active' ? 'Pausar' : 'Activar'}
                   onPress={() => void handleToggleJob(item.id)}
                   loading={updatingJobId === item.id}
+                  disabled={isRestricted}
                   variant="secondary"
                   size="sm"
                   icon={item.status === 'active' ? 'pause' : 'play'}
@@ -286,6 +303,7 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
                 <Button
                   label="Editar"
                   onPress={() => handleOpenEditModal(item)}
+                  disabled={isRestricted}
                   variant="tonal"
                   size="sm"
                   icon="create-outline"
@@ -334,7 +352,11 @@ export const HU03_MisVacantesView: React.FC<MisVacantesViewProps> = ({
             </Text>
             <Notice
               tone="info"
-              message="Puedes completar tu perfil de empresa mientras la solicitud se revisa."
+              message={
+                company.status === 'rejected'
+                  ? 'Corrige la información solicitada desde la pestaña Empresa y guarda el perfil para reenviar la solicitud.'
+                  : 'Puedes completar tu perfil de empresa mientras la solicitud se revisa.'
+              }
             />
           </View>
         ) : (

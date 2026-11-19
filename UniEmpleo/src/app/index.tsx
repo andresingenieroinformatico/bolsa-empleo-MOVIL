@@ -1,38 +1,59 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { RoleHeader } from '@/components/RoleHeader';
 import { HU01_LoginModal } from '@/components/HU01_LoginModal';
 import {
+  AdminProfile,
+  AdminReports,
+  AdminSummary,
+  AdminTab,
+  AdminUser,
   Application,
   ApplicationStatus,
   CompanyProfile,
+  CompanyReports,
+  CompanySummary,
+  CompanyTab,
   JobOffer,
   StudentProfile,
+  StudentTab,
   UserRole,
 } from '@/data/mock-data';
 import {
   ApiDocument,
   ApiError,
+  ApiUser,
   CompanyRegistrationInput,
   JobSearchFilters,
   applyToJob,
   createJob,
+  fetchAllPages,
+  getAdminCompanies,
+  getAdminDashboard,
+  getAdminJobs,
+  getAdminProfile,
+  getAdminReports,
+  getAdminUsers,
   getAuthenticatedUser,
   getCompanyJobs,
   getCompanyProfile,
+  getCompanyReports,
   getCompanyStatus,
+  getCompanySummary,
   getJobApplicants,
   getJobs,
-  getPendingCompanies,
   getStudentApplications,
   getStudentProfile,
   logout,
   registerCompany,
+  toggleAdminJob,
+  toggleAdminUser,
   unwrapData,
-  unwrapList,
   unwrapPage,
+  updateAdminProfile,
+  updateAdminUser,
   updateApplicationStatus,
   updateCompanyApproval,
   updateCompanyProfile,
@@ -42,8 +63,14 @@ import {
   toJobWriteInput,
 } from '@/services/api';
 import {
+  mapAdminProfile,
+  mapAdminReports,
+  mapAdminSummary,
+  mapAdminUser,
   mapApplication,
   mapCompany,
+  mapCompanyReports,
+  mapCompanySummary,
   mapJob,
   mapStudentProfile,
 } from '@/services/api-mappers';
@@ -72,14 +99,25 @@ import {
 import { HU04_VacantesView } from '@/views/student/HU04_VacantesView';
 import { HU06_PostulacionesView } from '@/views/student/HU06_PostulacionesView';
 import { HU09_PerfilView } from '@/views/student/HU09_PerfilView';
+import { StudentSummaryView } from '@/views/student/StudentSummaryView';
 
 // Vistas de Empresa
 import { HU02_PerfilEmpresaView } from '@/views/company/HU02_PerfilEmpresaView';
 import { HU03_MisVacantesView } from '@/views/company/HU03_MisVacantesView';
 import { HU07_CandidatosView } from '@/views/company/HU07_CandidatosView';
+import { CompanySummaryView } from '@/views/company/CompanySummaryView';
+import { CompanyReportsView } from '@/views/company/CompanyReportsView';
 
-// Vista de Administrador
-import { HU08_AdminDashboardView } from '@/views/admin/HU08_AdminDashboardView';
+// Vistas de Administrador
+import { AdminSummaryView } from '@/views/admin/AdminSummaryView';
+import { AdminStudentsView } from '@/views/admin/AdminStudentsView';
+import { AdminCompaniesView } from '@/views/admin/AdminCompaniesView';
+import { AdminJobsView } from '@/views/admin/AdminJobsView';
+import { AdminProfileView } from '@/views/admin/AdminProfileView';
+
+import { useNotifications } from '@/hooks/use-notifications';
+import { NotificationsSheet } from '@/components/notifications-sheet';
+import { downloadReportPdf } from '@/lib/download-report';
 
 const EMPTY_STUDENT: StudentProfile = {
   id: '',
@@ -90,6 +128,15 @@ const EMPTY_STUDENT: StudentProfile = {
   semester: 0,
   availability: {},
 };
+
+function withSessionIdentity(profile: StudentProfile, user: ApiUser): StudentProfile {
+  return {
+    ...profile,
+    id: String(user.id),
+    name: user.name || profile.name,
+    email: user.email || profile.email,
+  };
+}
 
 function toJobPayload(job: JobOffer) {
   return toJobWriteInput({
@@ -115,8 +162,9 @@ function toJobPayload(job: JobOffer) {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [currentRole, setCurrentRole] = useState<UserRole>('student');
-  const [studentTab, setStudentTab] = useState<'vacantes' | 'postulaciones' | 'perfil'>('vacantes');
-  const [companyTab, setCompanyTab] = useState<'vacantes' | 'candidatos' | 'perfil'>('vacantes');
+  const [studentTab, setStudentTab] = useState<StudentTab>('resumen');
+  const [companyTab, setCompanyTab] = useState<CompanyTab>('resumen');
+  const [adminTab, setAdminTab] = useState<AdminTab>('resumen');
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
@@ -124,6 +172,18 @@ export default function HomeScreen() {
   const [jobsPage, setJobsPage] = useState(1);
   const [hasMoreJobs, setHasMoreJobs] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [companySummary, setCompanySummary] = useState<CompanySummary | null>(null);
+  const [companyReports, setCompanyReports] = useState<CompanyReports | null>(null);
+  const [adminSummary, setAdminSummary] = useState<AdminSummary | null>(null);
+  const [adminReports, setAdminReports] = useState<AdminReports | null>(null);
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [adminUsersTotal, setAdminUsersTotal] = useState(0);
+  const [adminJobs, setAdminJobs] = useState<JobOffer[]>([]);
+  const [adminJobsTotal, setAdminJobsTotal] = useState(0);
+  const [adminCompanies, setAdminCompanies] = useState<CompanyProfile[]>([]);
+  const [adminCompaniesTotal, setAdminCompaniesTotal] = useState(0);
+  const [adminSectionLoading, setAdminSectionLoading] = useState(false);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [showLanding, setShowLanding] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,6 +192,36 @@ export default function HomeScreen() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [showCompanyProfileCompletion, setShowCompanyProfileCompletion] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const [reportPdfError, setReportPdfError] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+
+  const notifications = useNotifications(session?.token);
+  const sessionRef = useRef<AuthSession | null>(null);
+  const showLandingRef = useRef(true);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    showLandingRef.current = showLanding;
+  }, [showLanding]);
+
+  const adminCompanyFilters = useRef<{
+    status: 'all' | 'pending' | 'approved' | 'rejected' | 'inactive';
+    search: string;
+  }>({ status: 'all', search: '' });
+  const adminJobFilters = useRef<{
+    status: 'all' | 'active' | 'paused' | 'closed';
+    search: string;
+  }>({ status: 'all', search: '' });
+  const adminUserFilters = useRef<{
+    search: string;
+    active?: boolean;
+    profile?: 'complete' | 'incomplete';
+  }>({ search: '' });
 
   const loadPublicJobs = useCallback(async (
     filters: JobSearchFilters = {},
@@ -156,32 +246,44 @@ export default function HomeScreen() {
     const token = activeSession.token;
     switch (activeSession.user.role) {
       case 'student': {
-        const [profileResponse, applicationsResponse] = await Promise.all([
+        const [profileResponse, applicationsResult] = await Promise.all([
           getStudentProfile(token),
-          getStudentApplications(token),
+          fetchAllPages((page) => getStudentApplications(token, page), 12),
         ]);
-        setStudent(mapStudentProfile(unwrapData(profileResponse)));
+        setStudent(
+          withSessionIdentity(
+            mapStudentProfile(unwrapData(profileResponse)),
+            activeSession.user,
+          ),
+        );
         setApplications(
-          unwrapList<unknown>(applicationsResponse).map((item) => mapApplication(item)),
+          applicationsResult.items.map((item) => mapApplication(item)),
         );
         setCompany(null);
         setCompanies([]);
+        setCompanySummary(null);
+        setCompanyReports(null);
         break;
       }
       case 'company': {
-        const [profileResponse, statusResponse, jobsResponse] = await Promise.all([
-          getCompanyProfile(token),
-          getCompanyStatus(token),
-          getCompanyJobs(token),
-        ]);
+        const [profileResponse, statusResponse, jobsResult, summaryResponse, reportsResponse] =
+          await Promise.all([
+            getCompanyProfile(token),
+            getCompanyStatus(token),
+            fetchAllPages((page) => getCompanyJobs(token, page), 12),
+            getCompanySummary(token),
+            getCompanyReports(token),
+          ]);
         const activeCompany = mapCompany(
           unwrapData(profileResponse),
           unwrapData(statusResponse),
         );
-        const companyJobs = unwrapList<unknown>(jobsResponse).map(mapJob);
+        const companyJobs = jobsResult.items.map(mapJob);
         setCompany(activeCompany);
         setCompanies([activeCompany]);
         setJobs(companyJobs);
+        setCompanySummary(mapCompanySummary(unwrapData(summaryResponse)));
+        setCompanyReports(mapCompanyReports(unwrapData(reportsResponse)));
         setJobsPage(1);
         setHasMoreJobs(false);
         setApplications([]);
@@ -189,10 +291,34 @@ export default function HomeScreen() {
         break;
       }
       case 'admin': {
-        const pendingCompanies = unwrapList<unknown>(
-          await getPendingCompanies(token),
-        ).map(mapCompany);
-        setCompanies(pendingCompanies);
+        const [
+          dashboardResponse,
+          reportsResponse,
+          profileResponse,
+          usersResult,
+          jobsResult,
+          companiesResult,
+        ] = await Promise.all([
+          getAdminDashboard(token),
+          getAdminReports(token),
+          getAdminProfile(token),
+          fetchAllPages((page) => getAdminUsers(token, { role: 'student', page }), 20),
+          fetchAllPages((page) => getAdminJobs(token, { page }), 15),
+          fetchAllPages((page) => getAdminCompanies(token, { page }), 15),
+        ]);
+
+        const summary = mapAdminSummary(unwrapData(dashboardResponse));
+
+        setAdminSummary(summary);
+        setAdminReports(mapAdminReports(unwrapData(reportsResponse)));
+        setAdminProfile(mapAdminProfile(unwrapData(profileResponse)));
+        setAdminUsers(usersResult.items.map((item) => mapAdminUser(item)));
+        setAdminUsersTotal(usersResult.total);
+        setAdminJobs(jobsResult.items.map((item) => mapJob(item)));
+        setAdminJobsTotal(jobsResult.total);
+        setAdminCompanies(companiesResult.items.map((item) => mapCompany(item)));
+        setAdminCompaniesTotal(companiesResult.total);
+        setCompanies(summary.recentCompanies.filter((item) => item.status === 'pending'));
         setCompany(null);
         setStudent(null);
         setJobs([]);
@@ -204,7 +330,7 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const reportError = useCallback((error: unknown) => {
+  const showApiError = useCallback((error: unknown) => {
     setApiError(
       error instanceof Error ? error.message : 'Ocurrió un error inesperado al conectar con la API.',
     );
@@ -231,6 +357,9 @@ export default function HomeScreen() {
         await saveAuthSession(verifiedSession);
         setSession(verifiedSession);
         await loadRoleData(verifiedSession);
+        if (verifiedSession.user.role === 'student') {
+          await loadPublicJobs({}, 1, false, verifiedSession.token);
+        }
       }
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -238,18 +367,53 @@ export default function HomeScreen() {
         setSession(null);
         setCurrentRole('student');
         setShowLanding(true);
+        setSessionNotice(
+          'Tu sesión expiró. Inicia sesión de nuevo para volver a tu panel.',
+        );
+      } else {
+        showApiError(error);
       }
-      reportError(error);
     } finally {
       setIsLoading(false);
       setIsRoleDataLoading(false);
     }
-  }, [loadRoleData, reportError]);
+  }, [loadPublicJobs, loadRoleData, showApiError]);
 
   useEffect(() => {
     const timeout = setTimeout(() => void hydrateApp(), 0);
     return () => clearTimeout(timeout);
   }, [hydrateApp]);
+
+  // After signing out, browser/Android back must not reopen the previous panel:
+  // it always returns to the landing page and explains that the session is closed.
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handlePopState = () => {
+        if (sessionRef.current) return;
+        setShowLanding(true);
+        setSessionNotice(
+          'Cerraste sesión. Por seguridad no puedes volver al panel anterior; inicia sesión de nuevo para continuar.',
+        );
+        window.history.pushState({ uniempleo: 'sesion-cerrada' }, '', window.location.href);
+      };
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+    }
+
+    if (Platform.OS === 'android') {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (showLandingRef.current) return false;
+        setShowLanding(true);
+        if (!sessionRef.current) {
+          setSessionNotice(
+            'Cerraste sesión. Por seguridad no puedes volver al panel anterior; inicia sesión de nuevo para continuar.',
+          );
+        }
+        return true;
+      });
+      return () => subscription.remove();
+    }
+  }, []);
 
   const handleLoginSuccess = async (nextSession: AuthSession) => {
     const entry = resolveRoleEntry(nextSession.user.role, currentRole);
@@ -257,6 +421,7 @@ export default function HomeScreen() {
     setCurrentRole(entry.role);
     setShowLanding(entry.destination !== 'dashboard');
     setApiError(null);
+    setSessionNotice(null);
     setIsLoading(true);
     setIsRoleDataLoading(true);
     try {
@@ -265,7 +430,7 @@ export default function HomeScreen() {
         await loadPublicJobs({}, 1, false, nextSession.token);
       }
     } catch (error) {
-      reportError(error);
+      showApiError(error);
     } finally {
       setIsLoading(false);
       setIsRoleDataLoading(false);
@@ -298,11 +463,14 @@ export default function HomeScreen() {
         cvFile: useProfileCv ? undefined : customCv,
         coverLetter,
       });
-      const response = await getStudentApplications(session.token);
-      setApplications(unwrapList<unknown>(response).map((item) => mapApplication(item)));
+      const applicationsResult = await fetchAllPages(
+        (page) => getStudentApplications(session.token, page),
+        12,
+      );
+      setApplications(applicationsResult.items.map((item) => mapApplication(item)));
       setApiError(null);
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     }
   };
@@ -318,7 +486,7 @@ export default function HomeScreen() {
         session?.user.role === 'student' ? session.token : undefined,
       );
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -337,14 +505,15 @@ export default function HomeScreen() {
         session?.user.role === 'student' ? session.token : undefined,
       );
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUpdateStudent = async (updated: StudentProfile) => {    if (!session || session.user.role !== 'student') {
+  const handleUpdateStudent = async (updated: StudentProfile) => {
+    if (!session || session.user.role !== 'student') {
       throw new Error('Inicia sesión para guardar tu perfil.');
     }
     try {
@@ -354,10 +523,15 @@ export default function HomeScreen() {
         phone: updated.phone,
         availability: updated.availability,
       });
-      setStudent(mapStudentProfile(unwrapData(await getStudentProfile(session.token))));
+      setStudent(
+        withSessionIdentity(
+          mapStudentProfile(unwrapData(await getStudentProfile(session.token))),
+          session.user,
+        ),
+      );
       setApiError(null);
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     }
   };
@@ -368,12 +542,15 @@ export default function HomeScreen() {
     }
     try {
       await uploadStudentCv(session.token, file);
-      const updated = mapStudentProfile(unwrapData(await getStudentProfile(session.token)));
+      const updated = withSessionIdentity(
+        mapStudentProfile(unwrapData(await getStudentProfile(session.token))),
+        session.user,
+      );
       setStudent(updated);
       setApiError(null);
       return updated;
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     }
   };
@@ -383,7 +560,7 @@ export default function HomeScreen() {
       throw new Error('Inicia sesión como empresa para actualizar el perfil.');
     }
     try {
-      await updateCompanyProfile(session.token, {
+      const response = await updateCompanyProfile(session.token, {
         company_name: updated.name,
         nit: updated.nit,
         sector: updated.sector,
@@ -392,13 +569,18 @@ export default function HomeScreen() {
         address: updated.address || '',
         description: updated.description,
       });
-      setCompany(updated);
+      // The backend may move a rejected company back to "pending" when it
+      // resubmits, so the refreshed server state is the source of truth.
+      const refreshed = mapCompany(unwrapData(response));
+      setCompany(refreshed);
       setCompanies((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
+        current.some((item) => item.id === refreshed.id)
+          ? current.map((item) => (item.id === refreshed.id ? refreshed : item))
+          : [refreshed],
       );
       setApiError(null);
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     }
   };
@@ -410,7 +592,7 @@ export default function HomeScreen() {
       await loadRoleData(session);
       setApiError(null);
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     }
   };
@@ -422,7 +604,7 @@ export default function HomeScreen() {
       await loadRoleData(session);
       setApiError(null);
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     }
   };
@@ -451,7 +633,7 @@ export default function HomeScreen() {
       });
       setApiError(null);
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     }
   };
@@ -460,9 +642,11 @@ export default function HomeScreen() {
     if (!session || session.user.role !== 'company') {
       throw new Error('Inicia sesión como empresa para consultar candidatos.');
     }
-    return unwrapList<unknown>(
-      await getJobApplicants(session.token, jobId),
-    ).map((item) => mapApplication(item, true));
+    const result = await fetchAllPages(
+      (page) => getJobApplicants(session.token, jobId, page),
+      15,
+    );
+    return result.items.map((item) => mapApplication(item, true));
   }, [session]);
 
   const handleRegisterCompany = async (input: CompanyRegistrationInput) => {
@@ -480,7 +664,7 @@ export default function HomeScreen() {
       await loadRoleData(session);
       setApiError(null);
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
     }
   };
@@ -492,8 +676,200 @@ export default function HomeScreen() {
       await loadRoleData(session);
       setApiError(null);
     } catch (error) {
-      reportError(error);
+      showApiError(error);
       throw error;
+    }
+  };
+
+  const refreshAdminCompanies = useCallback(async () => {
+    if (!session || session.user.role !== 'admin') return;
+    const { status, search } = adminCompanyFilters.current;
+    const result = await fetchAllPages(
+      (page) =>
+        getAdminCompanies(session.token, {
+          status: status === 'all' ? undefined : status,
+          search,
+          page,
+        }),
+      15,
+    );
+    setAdminCompanies(result.items.map((item) => mapCompany(item)));
+    setAdminCompaniesTotal(result.total);
+  }, [session]);
+
+  const refreshAdminUsers = useCallback(async () => {
+    if (!session || session.user.role !== 'admin') return;
+    const { search, active, profile } = adminUserFilters.current;
+    const result = await fetchAllPages(
+      (page) =>
+        getAdminUsers(session.token, {
+          role: 'student',
+          search,
+          active,
+          profile,
+          page,
+        }),
+      20,
+    );
+    setAdminUsers(result.items.map((item) => mapAdminUser(item)));
+    setAdminUsersTotal(result.total);
+  }, [session]);
+
+  const refreshAdminJobs = useCallback(async () => {
+    if (!session || session.user.role !== 'admin') return;
+    const { status, search } = adminJobFilters.current;
+    const result = await fetchAllPages(
+      (page) =>
+        getAdminJobs(session.token, {
+          status: status === 'all' ? undefined : status,
+          search,
+          page,
+        }),
+      15,
+    );
+    setAdminJobs(result.items.map((item) => mapJob(item)));
+    setAdminJobsTotal(result.total);
+  }, [session]);
+
+  const runAdminSection = async (action: () => Promise<void>) => {
+    setAdminSectionLoading(true);
+    setApiError(null);
+    try {
+      await action();
+    } catch (error) {
+      showApiError(error);
+      throw error;
+    } finally {
+      setAdminSectionLoading(false);
+    }
+  };
+
+  const handleFilterAdminCompanies = async (
+    status: 'all' | 'pending' | 'approved' | 'rejected' | 'inactive',
+  ) => {
+    adminCompanyFilters.current.status = status;
+    await runAdminSection(refreshAdminCompanies);
+  };
+
+  const handleSearchAdminCompanies = async (search: string) => {
+    adminCompanyFilters.current.search = search;
+    await runAdminSection(refreshAdminCompanies);
+  };
+
+  const handleQueryAdminUsers = async (query: {
+    search: string;
+    active?: boolean;
+    profile?: 'complete' | 'incomplete';
+  }) => {
+    adminUserFilters.current = {
+      search: query.search.trim(),
+      active: query.active,
+      profile: query.profile,
+    };
+    await runAdminSection(refreshAdminUsers);
+  };
+
+  const handleToggleAdminUser = async (userId: string) => {
+    if (!session || session.user.role !== 'admin') {
+      throw new Error('Inicia sesión como administrador para continuar.');
+    }
+    await runAdminSection(async () => {
+      await toggleAdminUser(session.token, userId);
+      await refreshAdminUsers();
+    });
+  };
+
+  const handleUpdateAdminUser = async (
+    userId: string,
+    input: {
+      name: string;
+      email: string;
+      program: string;
+      semester?: string;
+      phone?: string;
+      studentCode?: string;
+      password?: string;
+      passwordConfirmation?: string;
+    },
+  ) => {
+    if (!session || session.user.role !== 'admin') {
+      throw new Error('Inicia sesión como administrador para continuar.');
+    }
+    await runAdminSection(async () => {
+      await updateAdminUser(session.token, userId, input);
+      await refreshAdminUsers();
+    });
+  };
+
+  const handleFilterAdminJobs = async (
+    status: 'all' | 'active' | 'paused' | 'closed',
+  ) => {
+    adminJobFilters.current.status = status;
+    await runAdminSection(refreshAdminJobs);
+  };
+
+  const handleSearchAdminJobs = async (search: string) => {
+    adminJobFilters.current.search = search;
+    await runAdminSection(refreshAdminJobs);
+  };
+
+  const handleToggleAdminJob = async (jobId: string) => {
+    if (!session || session.user.role !== 'admin') {
+      throw new Error('Inicia sesión como administrador para continuar.');
+    }
+    await runAdminSection(async () => {
+      await toggleAdminJob(session.token, jobId);
+      await refreshAdminJobs();
+    });
+  };
+
+  const handleUpdateAdminProfile = async (input: {
+    name: string;
+    email: string;
+    password?: string;
+    passwordConfirmation?: string;
+  }) => {
+    if (!session || session.user.role !== 'admin') {
+      throw new Error('Inicia sesión como administrador para continuar.');
+    }
+    try {
+      await updateAdminProfile(session.token, {
+        name: input.name,
+        email: input.email,
+        ...(input.password
+          ? {
+              password: input.password,
+              password_confirmation: input.passwordConfirmation ?? '',
+            }
+          : {}),
+      });
+      const updated = mapAdminProfile(unwrapData(await getAdminProfile(session.token)));
+      setAdminProfile(updated);
+      const nextSession: AuthSession = {
+        ...session,
+        user: { ...session.user, name: updated.name, email: updated.email },
+      };
+      setSession(nextSession);
+      await saveAuthSession(nextSession);
+      setApiError(null);
+    } catch (error) {
+      showApiError(error);
+      throw error;
+    }
+  };
+
+  const handleDownloadReport = async (scope: 'admin' | 'company') => {
+    if (!session) throw new Error('Inicia sesión para descargar el reporte.');
+    setIsDownloadingReport(true);
+    setReportPdfError(null);
+    try {
+      await downloadReportPdf(session.token, scope);
+    } catch (error) {
+      setReportPdfError(
+        error instanceof Error ? error.message : 'No fue posible descargar el reporte.',
+      );
+    } finally {
+      setIsDownloadingReport(false);
     }
   };
 
@@ -502,7 +878,7 @@ export default function HomeScreen() {
       try {
         await logout(session.token);
       } catch (error) {
-        reportError(error);
+        showApiError(error);
       }
     }
     await clearAuthSession();
@@ -512,8 +888,53 @@ export default function HomeScreen() {
     setCompanies([]);
     setApplications([]);
     setCurrentRole('student');
-    setStudentTab('vacantes');
+    setStudentTab('resumen');
+    setCompanyTab('resumen');
+    setAdminTab('resumen');
+    setShowLoginModal(false);
+    setShowRegistrationModal(false);
+    setShowNotifications(false);
+    setShowCompanyProfileCompletion(false);
+    setReportPdfError(null);
     setShowLanding(true);
+    setSessionNotice(
+      'Cerraste sesión correctamente. Por seguridad no puedes volver al panel anterior; inicia sesión de nuevo cuando quieras continuar.',
+    );
+
+    if (Platform.OS === 'web') {
+      // Keeps a sentinel entry so the browser Back button cannot leave the session flow.
+      window.history.pushState({ uniempleo: 'sesion-cerrada' }, '', window.location.href);
+    }
+  };
+
+  const handleResumeSession = () => {
+    if (!session) {
+      setShowLoginModal(true);
+      return;
+    }
+    // Keeps the section the user was viewing so "Continuar" returns there.
+    setCurrentRole(session.user.role);
+    setShowLanding(false);
+    setSessionNotice(null);
+    void notifications.refresh();
+  };
+
+  const handleOpenRoleDashboard = () => {
+    if (!session) {
+      setShowLoginModal(true);
+      return;
+    }
+    const role = session.user.role;
+    // "Mi panel" always starts on the main dashboard of the signed-in role.
+    if (role === 'student') setStudentTab('resumen');
+    if (role === 'company') setCompanyTab('resumen');
+    if (role === 'admin') setAdminTab('resumen');
+    setCurrentRole(role);
+    setShowLoginModal(false);
+    setShowRegistrationModal(false);
+    setShowLanding(false);
+    setSessionNotice(null);
+    void notifications.refresh();
   };
 
   const handleOpenLogin = (role: UserRole) => {
@@ -522,6 +943,7 @@ export default function HomeScreen() {
     if (entry.destination === 'dashboard') {
       setShowLanding(false);
       setShowLoginModal(false);
+      setSessionNotice(null);
       return;
     }
     setShowLoginModal(true);
@@ -539,7 +961,7 @@ export default function HomeScreen() {
 
   const hasActiveRole = session?.user.role === currentRole;
   const accessRequiresLogin = !hasActiveRole;
-  const showBottomNav = (currentRole === 'student' || currentRole === 'company') && !accessRequiresLogin;
+  const showBottomNav = hasActiveRole;
   const showCompanyMissingProfile =
     !isLoading && !apiError && !company && currentRole === 'company' && hasActiveRole;
   const missingCompanyProfileFields =
@@ -558,11 +980,18 @@ export default function HomeScreen() {
         <HU00_LandingPage
           jobs={jobs}
           hasSession={Boolean(session)}
+          sessionRole={session?.user.role ?? null}
+          userName={session?.user.name}
           isLoading={isLoading}
           errorMessage={apiError}
+          sessionNotice={sessionNotice}
+          onDismissSessionNotice={() => setSessionNotice(null)}
           onExplore={handleExplore}
           onLogin={handleOpenLogin}
           onCreateAccount={() => setShowRegistrationModal(true)}
+          onResumeSession={session ? handleResumeSession : undefined}
+          onOpenDashboard={session ? handleOpenRoleDashboard : undefined}
+          onLogout={session ? handleLogout : undefined}
         />
       ) : (
         <View style={styles.appShell}>
@@ -571,6 +1000,11 @@ export default function HomeScreen() {
             onOpenLoginModal={() => setShowLoginModal(true)}
             onLogout={handleLogout}
             onGoHome={() => setShowLanding(true)}
+            onOpenNotifications={() => {
+              setShowNotifications(true);
+              void notifications.refresh();
+            }}
+            unreadNotifications={notifications.unreadCount}
             userName={session?.user.name}
           />
 
@@ -605,6 +1039,30 @@ export default function HomeScreen() {
                   </View>
                 ) : null}
 
+                {currentRole === 'company' && hasActiveRole && company?.status === 'rejected' ? (
+                  <View style={styles.companyProfileBanner}>
+                    <Notice
+                      tone="error"
+                      title="Tu empresa fue rechazada"
+                      message={`${
+                        company.rejectionReason
+                          ? `Motivo: ${company.rejectionReason.replace(/\.+\s*$/, '')}. `
+                          : ''
+                      }Corrige la información solicitada y guarda el perfil: la solicitud volverá a revisión automáticamente.`}
+                      actionLabel="Actualizar información"
+                      onAction={() => setCompanyTab('perfil')}
+                    />
+                  </View>
+                ) : null}
+
+                {currentRole === 'student' && studentTab === 'resumen' && (
+                  <StudentSummaryView
+                    student={student || EMPTY_STUDENT}
+                    applications={applications}
+                    jobs={jobs}
+                    onOpenTab={setStudentTab}
+                  />
+                )}
                 {currentRole === 'student' && studentTab === 'vacantes' && (
                   <HU04_VacantesView
                     jobs={jobs}
@@ -627,6 +1085,13 @@ export default function HomeScreen() {
                     onUploadCv={handleUploadCv}
                   />
                 )}
+                {currentRole === 'company' && hasActiveRole && company && companyTab === 'resumen' && (
+                  <CompanySummaryView
+                    company={company}
+                    summary={companySummary}
+                    onOpenTab={setCompanyTab}
+                  />
+                )}
                 {currentRole === 'company' && hasActiveRole && company && companyTab === 'vacantes' && (
                   <HU03_MisVacantesView
                     company={company}
@@ -640,8 +1105,24 @@ export default function HomeScreen() {
                 {currentRole === 'company' && hasActiveRole && company && companyTab === 'candidatos' && (
                   <HU07_CandidatosView
                     jobs={jobs}
+                    readOnly={company.status === 'rejected'}
+                    readOnlyMessage={
+                      company.rejectionReason
+                        ? `Motivo del rechazo: ${company.rejectionReason}`
+                        : undefined
+                    }
                     onLoadApplicants={handleLoadJobApplicants}
                     onUpdateApplicationStatus={handleUpdateApplicationStatus}
+                  />
+                )}
+                {currentRole === 'company' && hasActiveRole && company && companyTab === 'reportes' && (
+                  <CompanyReportsView
+                    company={company}
+                    reports={companyReports}
+                    isDownloading={isDownloadingReport}
+                    downloadError={reportPdfError}
+                    onDownload={() => handleDownloadReport('company')}
+                    onDismissError={() => setReportPdfError(null)}
                   />
                 )}
                 {currentRole === 'company' && hasActiveRole && company && companyTab === 'perfil' && (
@@ -650,12 +1131,53 @@ export default function HomeScreen() {
                     onUpdateCompany={handleUpdateCompany}
                   />
                 )}
-                {currentRole === 'admin' && hasActiveRole && (
-                  <HU08_AdminDashboardView
-                    companies={companies}
+                {currentRole === 'admin' && hasActiveRole && adminTab === 'resumen' && (
+                  <AdminSummaryView
+                    summary={adminSummary}
+                    reports={adminReports}
+                    pendingCompanies={companies}
+                    onApproveCompany={handleApproveCompany}
+                    onRejectCompany={handleRejectCompany}
+                    onOpenTab={setAdminTab}
+                    onDownloadReport={() => handleDownloadReport('admin')}
+                    isDownloadingReport={isDownloadingReport}
+                    downloadError={reportPdfError}
+                    onDismissDownloadError={() => setReportPdfError(null)}
+                  />
+                )}
+                {currentRole === 'admin' && hasActiveRole && adminTab === 'estudiantes' && (
+                  <AdminStudentsView
+                    users={adminUsers}
+                    total={adminUsersTotal}
+                    isLoading={adminSectionLoading}
+                    onQuery={handleQueryAdminUsers}
+                    onToggleUser={handleToggleAdminUser}
+                    onUpdateUser={handleUpdateAdminUser}
+                  />
+                )}
+                {currentRole === 'admin' && hasActiveRole && adminTab === 'empresas' && (
+                  <AdminCompaniesView
+                    companies={adminCompanies}
+                    total={adminCompaniesTotal}
+                    isLoading={adminSectionLoading}
+                    onFilter={handleFilterAdminCompanies}
+                    onSearch={handleSearchAdminCompanies}
                     onApproveCompany={handleApproveCompany}
                     onRejectCompany={handleRejectCompany}
                   />
+                )}
+                {currentRole === 'admin' && hasActiveRole && adminTab === 'vacantes' && (
+                  <AdminJobsView
+                    jobs={adminJobs}
+                    total={adminJobsTotal}
+                    isLoading={adminSectionLoading}
+                    onFilter={handleFilterAdminJobs}
+                    onSearch={handleSearchAdminJobs}
+                    onToggleJob={handleToggleAdminJob}
+                  />
+                )}
+                {currentRole === 'admin' && hasActiveRole && adminTab === 'perfil' && adminProfile && (
+                  <AdminProfileView profile={adminProfile} onSave={handleUpdateAdminProfile} />
                 )}
                 {showCompanyMissingProfile && (
                   <AccessRequired
@@ -675,8 +1197,10 @@ export default function HomeScreen() {
               role={currentRole}
               studentTab={studentTab}
               companyTab={companyTab}
+              adminTab={adminTab}
               onChangeStudentTab={setStudentTab}
               onChangeCompanyTab={setCompanyTab}
+              onChangeAdminTab={setAdminTab}
               bottomInset={insets.bottom}
             />
           )}
@@ -743,16 +1267,31 @@ export default function HomeScreen() {
           }}
         />
       )}
+
+      <NotificationsSheet
+        visible={showNotifications}
+        role={currentRole}
+        notifications={notifications.notifications}
+        unreadCount={notifications.unreadCount}
+        isLoading={notifications.isLoading}
+        error={notifications.error}
+        onClose={() => setShowNotifications(false)}
+        onRefresh={() => void notifications.refresh()}
+        onMarkRead={notifications.markRead}
+        onMarkAllRead={notifications.markAllRead}
+      />
     </SafeAreaView>
   );
 }
 
 interface BottomNavigationProps {
   role: UserRole;
-  studentTab: 'vacantes' | 'postulaciones' | 'perfil';
-  companyTab: 'vacantes' | 'candidatos' | 'perfil';
-  onChangeStudentTab: (tab: 'vacantes' | 'postulaciones' | 'perfil') => void;
-  onChangeCompanyTab: (tab: 'vacantes' | 'candidatos' | 'perfil') => void;
+  studentTab: StudentTab;
+  companyTab: CompanyTab;
+  adminTab: AdminTab;
+  onChangeStudentTab: (tab: StudentTab) => void;
+  onChangeCompanyTab: (tab: CompanyTab) => void;
+  onChangeAdminTab: (tab: AdminTab) => void;
   bottomInset: number;
 }
 
@@ -769,13 +1308,23 @@ function BottomNavigation({
   role,
   studentTab,
   companyTab,
+  adminTab,
   onChangeStudentTab,
   onChangeCompanyTab,
+  onChangeAdminTab,
   bottomInset,
 }: BottomNavigationProps) {
   const items: TabItem[] =
     role === 'student'
       ? [
+          {
+            key: 'resumen',
+            label: 'Resumen',
+            icon: 'grid-outline',
+            iconActive: 'grid',
+            active: studentTab === 'resumen',
+            onPress: () => onChangeStudentTab('resumen'),
+          },
           {
             key: 'vacantes',
             label: 'Vacantes',
@@ -801,32 +1350,91 @@ function BottomNavigation({
             onPress: () => onChangeStudentTab('perfil'),
           },
         ]
-      : [
-          {
-            key: 'vacantes',
-            label: 'Vacantes',
-            icon: 'briefcase-outline',
-            iconActive: 'briefcase',
-            active: companyTab === 'vacantes',
-            onPress: () => onChangeCompanyTab('vacantes'),
-          },
-          {
-            key: 'candidatos',
-            label: 'Candidatos',
-            icon: 'people-outline',
-            iconActive: 'people',
-            active: companyTab === 'candidatos',
-            onPress: () => onChangeCompanyTab('candidatos'),
-          },
-          {
-            key: 'perfil',
-            label: 'Empresa',
-            icon: 'business-outline',
-            iconActive: 'business',
-            active: companyTab === 'perfil',
-            onPress: () => onChangeCompanyTab('perfil'),
-          },
-        ];
+      : role === 'company'
+        ? [
+            {
+              key: 'resumen',
+              label: 'Resumen',
+              icon: 'grid-outline',
+              iconActive: 'grid',
+              active: companyTab === 'resumen',
+              onPress: () => onChangeCompanyTab('resumen'),
+            },
+            {
+              key: 'vacantes',
+              label: 'Vacantes',
+              icon: 'briefcase-outline',
+              iconActive: 'briefcase',
+              active: companyTab === 'vacantes',
+              onPress: () => onChangeCompanyTab('vacantes'),
+            },
+            {
+              key: 'candidatos',
+              label: 'Candidatos',
+              icon: 'people-outline',
+              iconActive: 'people',
+              active: companyTab === 'candidatos',
+              onPress: () => onChangeCompanyTab('candidatos'),
+            },
+            {
+              key: 'reportes',
+              label: 'Reportes',
+              icon: 'bar-chart-outline',
+              iconActive: 'bar-chart',
+              active: companyTab === 'reportes',
+              onPress: () => onChangeCompanyTab('reportes'),
+            },
+            {
+              key: 'perfil',
+              label: 'Empresa',
+              icon: 'business-outline',
+              iconActive: 'business',
+              active: companyTab === 'perfil',
+              onPress: () => onChangeCompanyTab('perfil'),
+            },
+          ]
+        : [
+            {
+              key: 'resumen',
+              label: 'Resumen',
+              icon: 'grid-outline',
+              iconActive: 'grid',
+              active: adminTab === 'resumen',
+              onPress: () => onChangeAdminTab('resumen'),
+            },
+            {
+              key: 'estudiantes',
+              label: 'Estudiantes',
+              icon: 'school-outline',
+              iconActive: 'school',
+              active: adminTab === 'estudiantes',
+              onPress: () => onChangeAdminTab('estudiantes'),
+            },
+            {
+              key: 'empresas',
+              label: 'Empresas',
+              icon: 'business-outline',
+              iconActive: 'business',
+              active: adminTab === 'empresas',
+              onPress: () => onChangeAdminTab('empresas'),
+            },
+            {
+              key: 'vacantes',
+              label: 'Vacantes',
+              icon: 'briefcase-outline',
+              iconActive: 'briefcase',
+              active: adminTab === 'vacantes',
+              onPress: () => onChangeAdminTab('vacantes'),
+            },
+            {
+              key: 'perfil',
+              label: 'Perfil',
+              icon: 'person-outline',
+              iconActive: 'person',
+              active: adminTab === 'perfil',
+              onPress: () => onChangeAdminTab('perfil'),
+            },
+          ];
 
   return (
     <View style={[styles.bottomNav, { paddingBottom: Math.max(bottomInset, 10) }]}>
@@ -845,7 +1453,12 @@ function BottomNavigation({
               color={item.active ? Brand.greenDark : Brand.slateSoft}
             />
           </View>
-          <Text style={[styles.navLabel, item.active && styles.navLabelActive]}>{item.label}</Text>
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.1}
+            style={[styles.navLabel, item.active && styles.navLabelActive]}>
+            {item.label}
+          </Text>
         </Pressable>
       ))}
     </View>

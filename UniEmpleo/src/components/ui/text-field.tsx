@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Pressable,
   StyleProp,
@@ -20,6 +20,10 @@ interface TextFieldProps extends Omit<TextInputProps, 'style'> {
   icon?: IconName;
   /** Shows a password visibility toggle. */
   secureToggle?: boolean;
+  /** Shows a quick button to erase the current value. */
+  clearable?: boolean;
+  /** Accessibility label for the clear button. */
+  clearLabel?: string;
   containerStyle?: StyleProp<ViewStyle>;
   optionalLabel?: string;
 }
@@ -35,6 +39,8 @@ export function TextField({
   required = false,
   icon,
   secureToggle = false,
+  clearable = false,
+  clearLabel,
   containerStyle,
   optionalLabel,
   secureTextEntry,
@@ -42,9 +48,17 @@ export function TextField({
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   const isSecure = secureTextEntry && !revealed;
   const hasError = Boolean(error);
+  const hasValue = typeof inputProps.value === 'string' && inputProps.value.length > 0;
+  const showClear = clearable && hasValue;
+
+  const handleClear = () => {
+    inputProps.onChangeText?.('');
+    inputRef.current?.focus();
+  };
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -74,6 +88,7 @@ export function TextField({
 
         <TextInput
           {...inputProps}
+          ref={inputRef}
           secureTextEntry={isSecure}
           placeholderTextColor={Brand.slateFaint}
           onFocus={(event) => {
@@ -88,11 +103,23 @@ export function TextField({
           style={[styles.input, inputProps.multiline && styles.inputMultiline]}
         />
 
+        {showClear ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={clearLabel ?? (label ? `Borrar ${label.toLowerCase()}` : 'Borrar texto')}
+            hitSlop={8}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+            onPress={handleClear}>
+            <Icon name="close-circle" size={19} color={Brand.slateSoft} />
+          </Pressable>
+        ) : null}
+
         {secureToggle ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={revealed ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            hitSlop={10}
+            hitSlop={8}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
             onPress={() => setRevealed((prev) => !prev)}>
             <Icon
               name={revealed ? 'eye-off-outline' : 'eye-outline'}
@@ -162,6 +189,16 @@ const styles = StyleSheet.create({
     minHeight: 92,
     textAlignVertical: 'top',
     paddingTop: 12,
+  },
+  iconButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  iconButtonPressed: {
+    backgroundColor: Brand.line,
   },
   hint: {
     ...Type.caption,

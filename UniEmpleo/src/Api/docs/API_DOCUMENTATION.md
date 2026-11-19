@@ -21,7 +21,7 @@ se permiten los orígenes locales de Expo (`localhost` y `127.0.0.1`, puertos
 - **Cuerpo (JSON):**
 ```json
 {
-  "email": "carlos.lopez@unipaz.edu.co",
+  "email": "Carlos.lopez@unipaz.edu.co",
   "password": "<contraseña-de-prueba-configurada>"
 }
 ```
@@ -35,7 +35,7 @@ se permiten los orígenes locales de Expo (`localhost` y `127.0.0.1`, puertos
     "user": {
       "id": 4,
       "name": "Carlos Andrés López",
-      "email": "carlos.lopez@unipaz.edu.co",
+      "email": "Carlos.lopez@unipaz.edu.co",
       "role": "student",
       "student_profile": {
         "id": 1,

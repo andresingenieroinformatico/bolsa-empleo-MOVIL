@@ -1,17 +1,108 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "./prisma";
 
-const LARAVEL_API_URL = process.env.LARAVEL_API_URL || "http://127.0.0.1:8000";
-
 export interface BridgeOptions {
   path?: string;
   method?: string;
   body?: any;
   transformResponse?: (data: any) => any;
   queryParams?: Record<string, string | number | boolean | undefined | null>;
+  /** Query params that must not be forwarded upstream (e.g. download tokens). */
+  dropQuery?: string[];
+  /** Explicit bearer token, used by download routes that receive the token as a query param. */
+  authorization?: string;
 }
 
+export function resolveLaravelApiBaseUrl(configuredUrl: string | undefined): URL {
+  const value = configuredUrl?.trim();
+  if (!value) {
+    throw new Error("Falta configurar LARAVEL_API_URL con la URL base del backend Laravel.");
+  }
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("LARAVEL_API_URL debe ser una URL absoluta válida.");
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("LARAVEL_API_URL debe usar HTTP o HTTPS.");
+  }
+  if (url.username || url.password || url.search || url.hash) {
+    throw new Error("LARAVEL_API_URL no debe contener credenciales, consulta ni fragmento.");
+  }
+
+  url.pathname = `${url.pathname.replace(/\/+$/, "")}/`;
+  return url;
+}
+
+export function addMobileDeviceName(payload: Record<string, unknown>): Record<string, unknown> {
+  return { ...payload, device_name: "UniEmpleo" };
+}
+
+export function normalizeLaravelResponse(status: number, data: unknown): unknown {
+  if (status < 200 || status >= 300) return data;
+  if (isRecord(data) && typeof data.success === "boolean") return data;
+
+  const message = isRecord(data) && typeof data.message === "string"
+    ? { message: data.message }
+    : {};
+
+  if (
+    isRecord(data) &&
+    Array.isArray(data.data) &&
+    ("current_page" in data || "per_page" in data || "total" in data)
+  ) {
+    return { success: true, ...message, data };
+  }
+
+  if (isRecord(data) && "data" in data) {
+    return { success: true, ...message, data: data.data };
+  }
+
+  if (isRecord(data) && "message" in data) {
+    return { success: true, ...message, data: null };
+  }
+
+  return { success: true, data };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+export async function forwardMobileAuth(request: NextRequest, path: string): Promise<NextResponse> {
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "El cuerpo debe contener JSON válido." },
+      { status: 400 }
+    );
+  }
+
+  if (!isRecord(payload)) {
+    return NextResponse.json(
+      { success: false, message: "El cuerpo debe ser un objeto JSON válido." },
+      { status: 400 }
+    );
+  }
+
+  return forwardToLaravel(request, {
+    path,
+    method: "POST",
+    body: addMobileDeviceName(payload),
+  });
+}
+
+// La auditoría es opcional: si la base de datos de Prisma no está disponible,
+// se desactiva con AUDIT_LOG_ENABLED=false para no bloquear ni llenar el log.
+const auditEnabled = process.env.AUDIT_LOG_ENABLED !== "false";
+
 function audit(endpoint: string, method: string, statusCode: number, duration: number) {
+  if (!auditEnabled) return;
   prisma.apiAuditLog.create({
     data: {
       endpoint,
@@ -43,15 +134,31 @@ export async function forwardToLaravel(
     targetPath = targetPath.startsWith("/") ? `/api/v1${targetPath}` : `/api/v1/${targetPath}`;
   }
 
-  const laravelUrl = new URL(targetPath, LARAVEL_API_URL);
-  requestUrl.searchParams.forEach((value, key) => laravelUrl.searchParams.set(key, value));
+  let laravelBaseUrl: URL;
+  try {
+    laravelBaseUrl = resolveLaravelApiBaseUrl(process.env.LARAVEL_API_URL);
+  } catch (error: unknown) {
+    console.error("[Bridge] La URL del backend Laravel no está configurada correctamente.", {
+      name: error instanceof Error ? error.name : "UnknownError",
+    });
+    return NextResponse.json(
+      { success: false, message: error instanceof Error ? error.message : "Configuración del backend inválida." },
+      { status: 503 }
+    );
+  }
+
+  const laravelUrl = new URL(targetPath, laravelBaseUrl);
+  requestUrl.searchParams.forEach((value, key) => {
+    if (options.dropQuery?.includes(key)) return;
+    laravelUrl.searchParams.set(key, value);
+  });
   for (const [key, value] of Object.entries(options.queryParams ?? {})) {
     if (value !== undefined && value !== null) laravelUrl.searchParams.set(key, String(value));
   }
 
   const method = (options.method ?? request.method).toUpperCase();
   const headers: Record<string, string> = { Accept: "application/json" };
-  const incomingAuth = request.headers.get("authorization");
+  const incomingAuth = options.authorization ?? request.headers.get("authorization");
   if (incomingAuth) headers.Authorization = incomingAuth;
 
   let body: BodyInit | undefined;
@@ -127,6 +234,7 @@ export async function forwardToLaravel(
         : { success: false, message: "El servicio de empleos no pudo procesar la solicitud." };
     }
 
+    responseData = normalizeLaravelResponse(upstream.status, responseData);
     if (options.transformResponse && responseData) {
       responseData = options.transformResponse(responseData);
     }

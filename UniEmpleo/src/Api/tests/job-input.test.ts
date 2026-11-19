@@ -10,10 +10,11 @@ test("maps the mobile job form fields to the backend REST shape", () => {
     requirements: ["React Native", "TypeScript"],
     contract_type: "Prácticas",
     modality: "Híbrido",
+    schedule: "Lunes a viernes",
     location: "Barrancabermeja",
     positions: 2,
     requires_cv: false,
-    programs_targeted: ["Ingeniería Informática"],
+    programs_targeted: ["Ingeniería Informática", "Sistemas"],
     company_id: 999,
   });
 
@@ -25,11 +26,12 @@ test("maps the mobile job form fields to the backend REST shape", () => {
       requirements: "React Native\nTypeScript",
       contract_type: "Prácticas",
       modality: "hybrid",
+      schedule: "Lunes a viernes",
       location: "Barrancabermeja",
       positions: 2,
       salary_negotiable: false,
       requires_cv: false,
-      programs_targeted: ["Ingeniería Informática"],
+      programs_targeted: "Ingeniería Informática, Sistemas",
     },
   });
 });
@@ -60,6 +62,23 @@ test("rejects unsupported modalities and never forwards unrecognized properties"
 
   assert.equal(result.success, false);
   if (!result.success) assert.ok(result.errors.modality);
+});
+
+test("rejects target programs longer than Laravel accepts", () => {
+  const result = mapJobPayload({
+    title: "Vacante",
+    description: "Descripción",
+    location: "Barrancabermeja",
+    modality: "Remoto",
+    programs_targeted: ["a".repeat(501)],
+  });
+
+  assert.equal(result.success, false);
+  if (!result.success) {
+    assert.deepEqual(result.errors.programs_targeted, [
+      "No puede superar los 500 caracteres.",
+    ]);
+  }
 });
 
 test("removes company-only notes from paginated student applications", () => {

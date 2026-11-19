@@ -10,6 +10,8 @@ interface RoleHeaderProps {
   onOpenLoginModal?: () => void;
   onLogout?: () => void;
   onGoHome?: () => void;
+  onOpenNotifications?: () => void;
+  unreadNotifications?: number;
   userName?: string;
 }
 
@@ -25,6 +27,8 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
   onOpenLoginModal,
   onLogout,
   onGoHome,
+  onOpenNotifications,
+  unreadNotifications = 0,
   userName,
 }) => {
   const role = ROLE_META[currentRole];
@@ -57,6 +61,25 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
                 <Text style={styles.roleText}>{role.label}</Text>
               </View>
             </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                unreadNotifications > 0
+                  ? `Notificaciones, ${unreadNotifications} sin leer`
+                  : 'Notificaciones'
+              }
+              onPress={onOpenNotifications}
+              hitSlop={8}
+              style={({ pressed }) => [styles.signOut, pressed && styles.signOutPressed]}>
+              <Icon name="notifications-outline" size={18} color={Brand.surface} />
+              {unreadNotifications > 0 ? (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Cerrar sesión"
@@ -174,6 +197,27 @@ const styles = StyleSheet.create({
   },
   signOutPressed: {
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 8,
+    backgroundColor: Brand.green,
+    borderWidth: 1.5,
+    borderColor: Brand.navy,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationBadgeText: {
+    ...Type.overline,
+    fontSize: 8,
+    lineHeight: 10,
+    color: Brand.surface,
+    letterSpacing: 0,
   },
   loginButton: {
     flexDirection: 'row',

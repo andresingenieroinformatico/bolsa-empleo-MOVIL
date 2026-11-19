@@ -21,12 +21,29 @@ API REST oficial desarrollada con **Next.js 14 (App Router)**, **Node.js**, **Ty
 ## 🚀 Comandos para Iniciar Ambos Servidores
 
 ### Terminal 1: Backend Central de Laravel (Puerto 8000)
-Ubicarse en el directorio del proyecto Laravel e iniciar el servidor:
+Ubicarse en el directorio del proyecto Laravel. La primera vez hay que crear el
+`.env`, la base SQLite y sembrar los datos de prueba:
 ```powershell
 cd <ruta-del-backend-Laravel>
+Copy-Item .env.example .env
+php artisan key:generate
+php artisan migrate --seed
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 > *(Disponible en `http://127.0.0.1:8000/api/v1`)*
+
+Si `php artisan serve` no logra abrir el puerto (ocurre con algunas
+instalaciones de PHP en Windows), sirve el proyecto directamente desde
+`public`:
+```powershell
+cd public
+php -S 127.0.0.1:8000 -t . "..\vendor\laravel\framework\src\Illuminate\Foundation\resources\server.php"
+```
+
+Verifica el backend antes de arrancar el gateway:
+```powershell
+Invoke-WebRequest http://127.0.0.1:8000/api/v1/jobs -UseBasicParsing
+```
 
 ### Terminal 2: API REST Oficial en Next.js (Puerto 3000)
 Ubicarse en el directorio del proyecto Next.js e iniciar el servidor:
@@ -53,22 +70,15 @@ alcanzable o no tiene `GET /api/v1/jobs`, responde HTTP 503 con estado `degraded
 Después prueba el login. No uses como `EXPO_PUBLIC_API_URL` un dominio que solo
 publique Laravel o la web.
 
-### Despliegue del gateway en Railway
+### Despliegue en Render
 
-El host Laravel y el gateway Next.js son servicios distintos. En Railway crea
-un servicio adicional desde este repositorio y configura:
-
-- **Root directory:** `/UniEmpleo/src/Api`
-- **Build command:** `npx prisma generate && npm run build`
-- **Start command:** `npm run start`
-- **Variables:** `DATABASE_URL`, `LARAVEL_API_URL` (host base Laravel sin
-  `/api/v1`), `CORS_ALLOWED_ORIGINS` y `JWT_SECRET`.
-
-Al terminar, usa el dominio generado para el servicio Next.js como
-`EXPO_PUBLIC_API_URL`, añadiendo `/api/v1`. El dominio Laravel que ya existe no
-es el gateway: el gateway atiende las rutas móviles y reenvía cada solicitud a
-Laravel. El health check de Railway puede usar `/api/v1`; responde 200 solo si
-la ruta pública `GET /api/v1/jobs` de Laravel responde correctamente.
+Laravel y Next.js son servicios independientes. La guía
+[DEPLOY-RENDER.md](../../../../Bolsa-empleo-unipaz-main/DEPLOY-RENDER.md)
+describe bases de datos, variables de entorno, Docker, almacenamiento
+persistente, health checks y la configuración que debe llevar la build Expo.
+El dominio que se asigna a Next.js es el que se configura como
+`EXPO_PUBLIC_API_URL`; `LARAVEL_API_URL` es solo para la conexión interna del
+gateway con Laravel.
 
 ---
 
@@ -146,3 +156,9 @@ Cada solicitud procesada por el cliente puente [`lib/laravel-bridge.ts`](file://
 - Tiempo de ejecución en milisegundos (`duration_ms`).
 - Correo del usuario autenticado (si aplica).
 - Dirección IP del cliente.
+
+La auditoría nunca bloquea la respuesta al cliente. Si MySQL no está disponible
+(por ejemplo, en un equipo de desarrollo que solo usa la base SQLite de Laravel),
+define `AUDIT_LOG_ENABLED="false"` en `src/Api/.env.local` para desactivarla y
+evitar errores de Prisma en cada solicitud. Cualquier otra ruta del gateway sigue
+funcionando porque la lógica de negocio vive en Laravel.

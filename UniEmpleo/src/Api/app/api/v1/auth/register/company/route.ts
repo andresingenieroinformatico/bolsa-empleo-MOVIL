@@ -5,6 +5,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   return forwardToLaravel(request, {
-    path: "/api/v1/auth/register-company",
+    path: "/api/v1/auth/register/company",
   });
 }

@@ -37,7 +37,6 @@ function buildDraft(company: CompanyProfile): Draft {
     contactPerson: emptyPlaceholder(company.contactPerson),
     phone: emptyPlaceholder(company.phone),
     address: emptyPlaceholder(company.address),
-    description: emptyPlaceholder(company.description),
   };
 }
 
@@ -77,7 +76,6 @@ export function CompanyProfileCompletionSheet({
         ...company,
         nit: draft.nit.trim() || 'No especificado',
         sector: draft.sector.trim() || 'No especificado',
-        description: draft.description.trim(),
         contactPerson: draft.contactPerson.trim(),
         phone: draft.phone.trim(),
         address: draft.address.trim(),
@@ -187,20 +185,6 @@ export function CompanyProfileCompletionSheet({
           placeholder="Dirección de la empresa"
           maxLength={255}
           icon="location-outline"
-        />
-      ) : null}
-
-      {missingFields.some((field) => field.key === 'description') ? (
-        <TextField
-          label="Descripción de la empresa"
-          required
-          value={draft.description}
-          onChangeText={(value) => setField('description', value)}
-          placeholder="Describe brevemente la actividad de la empresa"
-          multiline
-          numberOfLines={4}
-          maxLength={1000}
-          hint="Los estudiantes verán esta descripción en tu perfil."
         />
       ) : null}
 

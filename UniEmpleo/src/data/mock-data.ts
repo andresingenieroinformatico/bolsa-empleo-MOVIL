@@ -65,6 +65,8 @@ export interface JobOffer {
   status: 'active' | 'paused' | 'closed';
   vacanciesCount: number;
   requiresCv: boolean;
+  /** Postulaciones recibidas, disponible en las vistas administrativas. */
+  applicationsCount?: number;
 }
 
 export interface Application {
@@ -90,6 +92,80 @@ export interface AdminKPIs {
   activeJobs: number;
   totalApplications: number;
   monthlyStats: { month: string; applications: number }[];
+}
+
+export type AdminTab = 'resumen' | 'estudiantes' | 'empresas' | 'vacantes' | 'perfil';
+export type StudentTab = 'resumen' | 'vacantes' | 'postulaciones' | 'perfil';
+export type CompanyTab = 'resumen' | 'vacantes' | 'candidatos' | 'reportes' | 'perfil';
+
+export interface AdminSummary {
+  studentsTotal: number;
+  companiesApproved: number;
+  companiesPending: number;
+  jobsActive: number;
+  applicationsTotal: number;
+  monthlyApplications: { month: string; total: number }[];
+  topAreas: { area: string; total: number }[];
+  recentCompanies: CompanyProfile[];
+}
+
+export interface AdminReports {
+  studentsTotal: number;
+  companiesApproved: number;
+  jobsActive: number;
+  jobsClosed: number;
+  applicationsTotal: number;
+  applicationsAccepted: number;
+  companiesByStatus: Record<string, number>;
+  applicationsByStatus: Record<string, number>;
+  jobsByArea: { area: string; total: number }[];
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  active: boolean;
+  program?: string;
+  semester?: number;
+  phone?: string;
+  studentCode?: string;
+  companyName?: string;
+  companyStatus?: CompanyStatus;
+}
+
+export interface AdminProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+}
+
+export interface CompanySummary {
+  jobsTotal: number;
+  jobsActive: number;
+  applicationsTotal: number;
+  applicationsPending: number;
+  recentApplications: Application[];
+}
+
+export interface CompanyReports {
+  jobsTotal: number;
+  jobsActive: number;
+  applicationsTotal: number;
+  applicationsPending: number;
+  applicationsAccepted: number;
+  applicationsByStatus: Record<string, number>;
+  jobsPerformance: JobOffer[];
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  message: string;
+  readAt?: string | null;
+  createdAt?: string;
 }
 
 export const INITIAL_STUDENT: StudentProfile = {

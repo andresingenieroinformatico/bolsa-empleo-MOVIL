@@ -142,12 +142,12 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
 
             <View style={styles.heading}>
               <Text style={styles.title}>
-                {isStudent ? 'Hola de nuevo' : 'Acceso empresarial'}
+                {isStudent ? 'Hola de nuevo' : 'Acceso a tu cuenta'}
               </Text>
               <Text style={styles.subtitle}>
                 {isStudent
                   ? 'Ingresa con tu cuenta institucional para ver vacantes y seguir tus postulaciones.'
-                  : 'Ingresa con las credenciales de tu empresa para publicar y gestionar ofertas.'}
+                  : 'Empresas, estudiantes y administradores ingresan con su correo y contraseña. La plataforma reconoce tu rol automáticamente.'}
               </Text>
             </View>
 
@@ -201,16 +201,18 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
             ) : (
               <>
                 <TextField
-                  label="Correo corporativo"
+                  label="Correo corporativo o institucional"
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="contacto@empresa.com"
+                  placeholder="contacto@empresa.com o correo institucional"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="email"
                   icon="mail-outline"
-                  accessibilityLabel="Correo de empresa"
+                  clearable
+                  clearLabel="Borrar correo"
+                  accessibilityLabel="Correo de la cuenta"
                   returnKeyType="next"
                 />
 
@@ -222,6 +224,7 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
                   icon="lock-closed-outline"
                   secureTextEntry
                   secureToggle
+                  clearable
                   autoComplete="current-password"
                   accessibilityLabel="Contraseña"
                   returnKeyType="done"

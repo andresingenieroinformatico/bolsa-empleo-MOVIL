@@ -96,7 +96,7 @@ async function main() {
   const studentUser = await prisma.user.create({
     data: {
       name: "Carlos López",
-      email: "carlos.lopez@unipaz.edu.co",
+      email: "Carlos.lopez@unipaz.edu.co",
       password: studentPassword,
       role: Role.student,
       student_profile: {

@@ -118,7 +118,12 @@ export function mapJobPayload(input: Record<string, unknown>, partial = false): 
     if (!entries.every((entry) => typeof entry === "string")) {
       errors.programs_targeted = ["Debe ser una lista de programas de texto."];
     } else {
-      data.programs_targeted = entries.map((entry) => entry.trim()).filter(Boolean);
+      const value = entries.map((entry) => entry.trim()).filter(Boolean).join(", ");
+      if (value.length > 500) {
+        errors.programs_targeted = ["No puede superar los 500 caracteres."];
+      } else {
+        data.programs_targeted = value || null;
+      }
     }
   }
 

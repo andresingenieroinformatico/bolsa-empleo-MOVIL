@@ -23,7 +23,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { TextField } from '@/components/ui/text-field';
 import { Notice } from '@/components/ui/notice';
 import { InfoRow } from '@/components/ui/info-row';
-import { pluralize } from '@/lib/format';
+import { formatDate, pluralize } from '@/lib/format';
 
 interface VacantesViewProps {
   jobs: JobOffer[];
@@ -355,7 +355,7 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
               <View style={styles.cardFooter}>
                 <View style={styles.footerMeta}>
                   <Icon name="calendar-outline" size={13} color={Brand.slateSoft} />
-                  <Text style={styles.deadline}>Cierra {item.deadline}</Text>
+                  <Text style={styles.deadline}>Cierra {formatDate(item.deadline)}</Text>
                 </View>
                 <View style={styles.detailLink}>
                   <Text style={styles.detailLinkText}>Ver detalle</Text>
@@ -415,7 +415,7 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
             <Text style={styles.sheetSectionTitle}>Detalles de la oferta</Text>
             <View style={styles.infoCard}>
               <InfoRow icon="location-outline" label="Ubicación" value={selectedJob.location} />
-              <InfoRow icon="calendar-outline" label="Cierre" value={selectedJob.deadline} />
+              <InfoRow icon="calendar-outline" label="Cierre" value={formatDate(selectedJob.deadline)} />
               <InfoRow
                 icon="document-text-outline"
                 label="Hoja de vida"

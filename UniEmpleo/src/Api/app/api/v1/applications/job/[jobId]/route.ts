@@ -13,7 +13,7 @@ export async function GET(
   return forwardToLaravel(request, {
     path: "/api/v1/company/applications",
     queryParams: {
-      job_id: params.jobId,
+      job: params.jobId,
     },
   });
 }

@@ -5,8 +5,7 @@ export type CompanyProfileFieldKey =
   | 'sector'
   | 'contactPerson'
   | 'phone'
-  | 'address'
-  | 'description';
+  | 'address';
 
 export interface CompanyProfileField {
   key: CompanyProfileFieldKey;
@@ -33,7 +32,6 @@ export function getMissingCompanyProfileFields(company: CompanyProfile): Company
   if (!hasValue(company.contactPerson)) missing.push({ key: 'contactPerson', label: 'Responsable' });
   if (!hasValue(company.phone)) missing.push({ key: 'phone', label: 'Teléfono' });
   if (!hasValue(company.address)) missing.push({ key: 'address', label: 'Dirección' });
-  if (!hasValue(company.description)) missing.push({ key: 'description', label: 'Descripción' });
   return missing;
 }
 

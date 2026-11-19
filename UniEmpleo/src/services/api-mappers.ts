@@ -1,12 +1,20 @@
 import {
+  AdminProfile,
+  AdminReports,
+  AdminSummary,
+  AdminUser,
+  AppNotification,
   Application,
   ApplicationStatus,
   CompanyProfile,
+  CompanyReports,
   CompanyStatus,
+  CompanySummary,
   ContractType,
   JobModality,
   JobOffer,
   StudentProfile,
+  UserRole,
 } from '../data/mock-data';
 import { ApiError } from './api';
 
@@ -151,6 +159,9 @@ export function mapJob(value: unknown): JobOffer {
     status: mappedStatus,
     vacanciesCount: Number(source.positions ?? source.vacancies_count ?? 1),
     requiresCv: source.requires_cv !== false && source.requiere_cv !== false,
+    ...(source.applications_count === undefined
+      ? {}
+      : { applicationsCount: Number(source.applications_count) || 0 }),
   };
 }
 
@@ -167,7 +178,7 @@ export function mapStudentProfile(value: unknown): StudentProfile {
   const cvPath = stringValue(data, 'cv_path', 'cv_url');
 
   return {
-    id: requiredString(data, 'id', 'id'),
+    id: stringValue(data, 'id') || stringValue(source, 'id') || '',
     name,
     email,
     phone: stringValue(data, 'phone', 'telefono') || '',
@@ -190,12 +201,18 @@ export function mapStudentProfile(value: unknown): StudentProfile {
 export function mapCompany(value: unknown, statusValue?: unknown): CompanyProfile {
   const source = record(value, 'una empresa');
   const profile = nestedRecord(source, 'company_profile');
+  const account = nestedRecord(source, 'account');
+  const user = nestedRecord(source, 'user');
   const status = statusValue === undefined ? {} : record(statusValue, 'el estado de la empresa');
   const data = { ...source, ...profile, ...status };
   return {
     id: requiredString(data, 'id', 'id', 'empresa_id'),
     name: requiredString(data, 'nombre de empresa', 'company_name', 'nombre_empresa', 'name'),
-    email: stringValue(data, 'email', 'correo') || '',
+    email:
+      stringValue(data, 'email', 'correo') ||
+      stringValue(account, 'email') ||
+      stringValue(user, 'email') ||
+      '',
     nit: stringValue(data, 'nit') || 'No especificado',
     sector: stringValue(data, 'sector') || 'No especificado',
     description: stringValue(data, 'description', 'descripcion') || '',
@@ -260,5 +277,184 @@ export function mapApplication(value: unknown, includeCompanyNotes = false): App
     ...(includeCompanyNotes
       ? { companyNotes: stringValue(source, 'company_notes') }
       : {}),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Administración                                                            */
+/* -------------------------------------------------------------------------- */
+
+function countValue(source: JsonRecord, ...keys: string[]): number {
+  for (const key of keys) {
+    const value = source[key];
+    if (value === undefined || value === null || value === '') continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function countRecord(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, number>>(
+    (accumulator, [key, entry]) => {
+      const parsed = Number(entry);
+      if (Number.isFinite(parsed)) accumulator[key] = parsed;
+      return accumulator;
+    },
+    {},
+  );
+}
+
+function totalsByLabel(value: unknown, labelKey: string, totalKey: string) {
+  if (!Array.isArray(value)) return [];
+  return value.reduce<{ label: string; total: number }[]>((accumulator, entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return accumulator;
+    const row = entry as JsonRecord;
+    const label = stringValue(row, labelKey);
+    if (!label) return accumulator;
+    accumulator.push({ label, total: countValue(row, totalKey) });
+    return accumulator;
+  }, []);
+}
+
+function optionalCompanyStatus(value: unknown): CompanyStatus | undefined {
+  if (
+    value === 'pending' ||
+    value === 'approved' ||
+    value === 'rejected' ||
+    value === 'inactive'
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
+export function mapAdminSummary(value: unknown): AdminSummary {
+  const source = record(value, 'el resumen administrativo');
+  const recentCompanies = Array.isArray(source.recent_companies)
+    ? source.recent_companies.map((entry) => mapCompany(entry))
+    : [];
+
+  return {
+    studentsTotal: countValue(source, 'students_total'),
+    companiesApproved: countValue(source, 'companies_approved'),
+    companiesPending: countValue(source, 'companies_pending'),
+    jobsActive: countValue(source, 'jobs_active'),
+    applicationsTotal: countValue(source, 'applications_total'),
+    monthlyApplications: totalsByLabel(source.monthly_applications, 'month', 'total').map(
+      (row) => ({ month: row.label, total: row.total }),
+    ),
+    topAreas: totalsByLabel(source.top_areas, 'area', 'total').map((row) => ({
+      area: row.label,
+      total: row.total,
+    })),
+    recentCompanies,
+  };
+}
+
+export function mapAdminReports(value: unknown): AdminReports {
+  const source = record(value, 'el reporte administrativo');
+
+  return {
+    studentsTotal: countValue(source, 'students_total'),
+    companiesApproved: countValue(source, 'companies_approved'),
+    jobsActive: countValue(source, 'jobs_active'),
+    jobsClosed: countValue(source, 'jobs_closed'),
+    applicationsTotal: countValue(source, 'applications_total'),
+    applicationsAccepted: countValue(source, 'applications_accepted'),
+    companiesByStatus: countRecord(source.companies_by_status),
+    applicationsByStatus: countRecord(source.applications_by_status),
+    jobsByArea: totalsByLabel(source.jobs_by_area, 'area', 'total').map((row) => ({
+      area: row.label,
+      total: row.total,
+    })),
+  };
+}
+
+export function mapAdminUser(value: unknown): AdminUser {
+  const source = record(value, 'un usuario de la plataforma');
+  const profile = nestedRecord(source, 'student_profile');
+  const company = nestedRecord(source, 'company');
+  const role = stringValue(source, 'role');
+  if (role !== 'student' && role !== 'company' && role !== 'admin') {
+    throw new ApiError('La API devolvió un rol de usuario desconocido.', 502);
+  }
+
+  const semester = countValue(profile, 'semester');
+
+  return {
+    id: requiredString(source, 'id', 'id'),
+    name: requiredString(source, 'nombre', 'name'),
+    email: stringValue(source, 'email') || '',
+    role: role as UserRole,
+    active: source.active !== false,
+    program: stringValue(profile, 'program'),
+    semester: semester > 0 ? semester : undefined,
+    phone: stringValue(profile, 'phone'),
+    studentCode: stringValue(profile, 'student_code'),
+    companyName: stringValue(company, 'company_name'),
+    companyStatus: optionalCompanyStatus(company.status),
+  };
+}
+
+export function mapAdminProfile(value: unknown): AdminProfile {
+  const source = record(value, 'el perfil del administrador');
+
+  return {
+    id: requiredString(source, 'id', 'id'),
+    name: requiredString(source, 'nombre', 'name'),
+    email: stringValue(source, 'email') || '',
+    avatarUrl: stringValue(source, 'avatar_url'),
+  };
+}
+
+export function mapCompanySummary(value: unknown): CompanySummary {
+  const source = record(value, 'el resumen de la empresa');
+  const recentApplications = Array.isArray(source.recent_applications)
+    ? source.recent_applications.map((entry) => mapApplication(entry, true))
+    : [];
+
+  return {
+    jobsTotal: countValue(source, 'jobs_total'),
+    jobsActive: countValue(source, 'jobs_active'),
+    applicationsTotal: countValue(source, 'applications_total'),
+    applicationsPending: countValue(source, 'applications_pending'),
+    recentApplications,
+  };
+}
+
+export function mapCompanyReports(value: unknown): CompanyReports {
+  const source = record(value, 'el reporte de la empresa');
+  const jobsPerformance = Array.isArray(source.jobs_performance)
+    ? source.jobs_performance.map((entry) => mapJob(entry))
+    : [];
+
+  return {
+    jobsTotal: countValue(source, 'jobs_total'),
+    jobsActive: countValue(source, 'jobs_active'),
+    applicationsTotal: countValue(source, 'applications_total'),
+    applicationsPending: countValue(source, 'applications_pending'),
+    applicationsAccepted: countValue(source, 'applications_accepted'),
+    applicationsByStatus: countRecord(source.applications_by_status),
+    jobsPerformance,
+  };
+}
+
+export function mapNotification(value: unknown): AppNotification {
+  const source = record(value, 'una notificación');
+  const data = nestedRecord(source, 'data');
+  const message =
+    stringValue(data, 'message') ||
+    stringValue(data, 'title') ||
+    stringValue(source, 'message') ||
+    'Tienes una nueva actualización.';
+
+  return {
+    id: requiredString(source, 'id', 'id'),
+    type: stringValue(source, 'type') || stringValue(data, 'type') || 'general',
+    message,
+    readAt: typeof source.read_at === 'string' ? source.read_at : null,
+    createdAt: stringValue(source, 'created_at'),
   };
 }

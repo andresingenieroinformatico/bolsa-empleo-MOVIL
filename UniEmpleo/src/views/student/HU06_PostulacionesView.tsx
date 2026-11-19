@@ -12,6 +12,7 @@ import { ProgressSteps, ProgressStep } from '@/components/ui/progress-steps';
 import { Avatar } from '@/components/ui/avatar';
 import { Icon } from '@/components/ui/icon';
 import { SectionHeader } from '@/components/ui/section-header';
+import { formatDate } from '@/lib/format';
 
 interface PostulacionesViewProps {
   applications: Application[];
@@ -141,7 +142,7 @@ export const HU06_PostulacionesView: React.FC<PostulacionesViewProps> = ({
               <View style={styles.cardFooter}>
                 <View style={styles.footerMeta}>
                   <Icon name="calendar-outline" size={13} color={Brand.slateSoft} />
-                  <Text style={styles.metaText}>Postulado el {item.appliedAt}</Text>
+                  <Text style={styles.metaText}>Postulado el {formatDate(item.appliedAt)}</Text>
                 </View>
                 <View style={styles.footerMeta}>
                   <Icon name="document-attach-outline" size={13} color={Brand.greenDark} />
@@ -204,7 +205,7 @@ export const HU06_PostulacionesView: React.FC<PostulacionesViewProps> = ({
               <InfoRow
                 icon="calendar-outline"
                 label="Fecha de postulación"
-                value={selectedApp.appliedAt}
+                value={formatDate(selectedApp.appliedAt)}
               />
               <InfoRow
                 icon="document-attach-outline"

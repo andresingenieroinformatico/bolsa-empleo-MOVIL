@@ -67,8 +67,7 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
       !updated.sector ||
       !updated.contactPerson ||
       !updated.phone ||
-      !updated.address ||
-      !updated.description
+      !updated.address
     ) {
       setError('Completa todos los datos institucionales para guardar.');
       return;
@@ -155,7 +154,7 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
             value={company.address || 'Sin registrar'}
           />
           <InfoRow icon="mail-outline" label="Correo" value={company.email} />
-          <InfoRow icon="document-text-outline" label="Descripción" value={company.description} last muted />
+          <InfoRow icon="document-text-outline" label="Descripción" value={company.description || 'No registrada'} last muted />
         </View>
       </View>
 
@@ -234,13 +233,12 @@ export const HU02_PerfilEmpresaView: React.FC<PerfilEmpresaViewProps> = ({
         />
         <TextField
           label="Descripción"
-          required
           value={description}
           onChangeText={setDescription}
           multiline
           numberOfLines={4}
-          maxLength={3000}
-          hint="Describe la actividad de la empresa para los estudiantes."
+          maxLength={2000}
+          hint="Opcional. Describe la actividad de la empresa para los estudiantes."
         />
 
         {error ? (

@@ -1,27 +1,30 @@
 import { NextResponse } from "next/server";
+import { resolveLaravelApiBaseUrl } from "@/lib/laravel-bridge";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const configuredLaravelUrl = process.env.LARAVEL_API_URL || "http://127.0.0.1:8000";
-  const laravelUrl = new URL(
-    "api/v1/jobs",
-    `${configuredLaravelUrl.replace(/\/+$/, "")}/`
-  );
-
   let laravelOnline = false;
+  let healthMessage = "El gateway está disponible, pero no pudo alcanzar una ruta válida del backend Laravel.";
   try {
+    const laravelBaseUrl = resolveLaravelApiBaseUrl(process.env.LARAVEL_API_URL);
+    const laravelUrl = new URL("/api/v1/jobs", laravelBaseUrl);
     const res = await fetch(laravelUrl, { signal: AbortSignal.timeout(3000) });
     laravelOnline = res.ok;
-  } catch {
-    laravelOnline = false;
+  } catch (error: unknown) {
+    console.error("[Health] No fue posible verificar el backend Laravel.", {
+      name: error instanceof Error ? error.name : "UnknownError",
+    });
+    if (error instanceof Error && error.message.startsWith("LARAVEL_API_URL")) {
+      healthMessage = error.message;
+    }
   }
 
   return NextResponse.json({
     success: laravelOnline,
     message: laravelOnline
       ? "Gateway y backend de empleos disponibles."
-      : "El gateway está disponible, pero no pudo alcanzar una ruta válida del backend Laravel.",
+      : healthMessage,
     data: {
       version: "1.0.0",
       status: laravelOnline ? "online" : "degraded",

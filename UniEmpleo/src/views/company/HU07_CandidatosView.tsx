@@ -13,10 +13,13 @@ import { TextField } from '@/components/ui/text-field';
 import { Notice } from '@/components/ui/notice';
 import { SectionHeader } from '@/components/ui/section-header';
 import { InfoRow } from '@/components/ui/info-row';
-import { pluralize } from '@/lib/format';
+import { formatDate, pluralize } from '@/lib/format';
 
 interface CandidatosViewProps {
   jobs: JobOffer[];
+  /** Disables candidate management while the company is not approved. */
+  readOnly?: boolean;
+  readOnlyMessage?: string;
   onLoadApplicants: (jobId: string) => Promise<Application[]>;
   onUpdateApplicationStatus: (
     appId: string,
@@ -35,6 +38,8 @@ const STATUS_OPTIONS: { value: ApplicationStatus; label: string; icon: IconName 
 
 export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
   jobs,
+  readOnly = false,
+  readOnlyMessage,
   onLoadApplicants,
   onUpdateApplicationStatus,
 }) => {
@@ -204,6 +209,17 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
                 onAction={() => setApplicantReloadKey((current) => current + 1)}
               />
             ) : null}
+
+            {readOnly ? (
+              <Notice
+                tone="warning"
+                title="Gestión de candidatos deshabilitada"
+                message={
+                  readOnlyMessage ??
+                  'Tu empresa debe estar aprobada para actualizar el estado de los candidatos.'
+                }
+              />
+            ) : null}
           </View>
         }
         ListEmptyComponent={
@@ -258,7 +274,7 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
             <View style={styles.detailsRow}>
               <View style={styles.detailItem}>
                 <Icon name="calendar-outline" size={13} color={Brand.slateSoft} />
-                <Text style={styles.detailText}>{item.appliedAt}</Text>
+                <Text style={styles.detailText}>{formatDate(item.appliedAt)}</Text>
               </View>
               <View style={styles.detailItem}>
                 <Icon name="document-text-outline" size={13} color={Brand.greenDark} />
@@ -278,7 +294,9 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
             ) : null}
 
             <View style={styles.cardAction}>
-              <Text style={styles.manageHint}>Evaluar candidato</Text>
+              <Text style={styles.manageHint}>
+                {readOnly ? 'Ver detalle' : 'Evaluar candidato'}
+              </Text>
               <Icon name="arrow-forward" size={14} color={Brand.greenDark} />
             </View>
           </Pressable>
@@ -298,8 +316,11 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
         closeLabel="Cerrar gestión de candidato"
         footer={
           <Button
-            label={isSavingStatus ? 'Guardando…' : 'Guardar evaluación'}
+            label={
+              readOnly ? 'Gestión deshabilitada' : isSavingStatus ? 'Guardando…' : 'Guardar evaluación'
+            }
             onPress={() => void handleSaveStatus()}
+            disabled={readOnly}
             loading={isSavingStatus}
             size="lg"
             iconRight="checkmark"
@@ -312,7 +333,7 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
               <InfoRow
                 icon="calendar-outline"
                 label="Fecha de postulación"
-                value={activeApplication.appliedAt}
+                value={formatDate(activeApplication.appliedAt)}
               />
               <InfoRow
                 icon="mail-outline"
@@ -331,11 +352,13 @@ export const HU07_CandidatosView: React.FC<CandidatosViewProps> = ({
                     key={option.value}
                     accessibilityRole="radio"
                     accessibilityLabel={option.label}
-                    accessibilityState={{ checked: isSelected }}
+                    accessibilityState={{ checked: isSelected, disabled: readOnly }}
+                    disabled={readOnly}
                     onPress={() => setNewStatus(option.value)}
                     style={({ pressed }) => [
                       styles.statusOption,
                       isSelected && styles.statusOptionActive,
+                      readOnly && styles.statusOptionDisabled,
                       pressed && styles.pressed,
                     ]}>
                     <Icon
@@ -611,6 +634,9 @@ const styles = StyleSheet.create({
   statusOptionActive: {
     borderColor: Brand.greenLine,
     backgroundColor: Brand.greenTint,
+  },
+  statusOptionDisabled: {
+    opacity: 0.55,
   },
   statusOptionText: {
     ...Type.label,

@@ -29,9 +29,9 @@ export async function PUT(
     }
   }
 
-  if (body.reason !== undefined && (typeof body.reason !== "string" || body.reason.length > 2000)) {
+  if (body.reason !== undefined && (typeof body.reason !== "string" || body.reason.length > 1000)) {
     return NextResponse.json(
-      { success: false, message: "El motivo debe ser texto de hasta 2.000 caracteres." },
+      { success: false, message: "El motivo debe ser texto de hasta 1.000 caracteres." },
       { status: 422 }
     );
   }
@@ -49,16 +49,31 @@ export async function PUT(
   }
 
   if (body.aprobada === false || body.action === "reject") {
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+    if (reason.length < 10) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Indica con al menos 10 caracteres la información que la empresa debe corregir.",
+        },
+        { status: 422 }
+      );
+    }
+
     return forwardToLaravel(request, {
       path: `/api/v1/admin/companies/${params.id}/reject`,
       method: "POST",
-      body: { reason: body.reason },
+      body: { reason },
     });
   }
 
   return forwardToLaravel(request, {
     path: `/api/v1/admin/companies/${params.id}/approve`,
     method: "POST",
+    // The body was already read above, so forward an explicit payload instead of
+    // letting the bridge read the consumed request stream again.
+    body: { action: "approve" },
   });
 }
 

@@ -14,6 +14,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { SkeletonBlock } from '@/components/SkeletonBlock';
 import { Application, JobOffer, StudentProfile } from '@/data/mock-data';
 import { ApiDocument, JobSearchFilters } from '@/services/api';
+import { isCvWithinLimit, MAX_CV_MB } from '@/lib/document-limits';
 import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
 import { Icon, IconName } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
@@ -164,8 +165,10 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
         setApplyError('El archivo seleccionado no es un PDF.');
         return;
       }
-      if (file.size !== undefined && file.size > 5 * 1024 * 1024) {
-        setApplyError('El archivo seleccionado supera el tamaño máximo permitido de 5 MB.');
+      if (!isCvWithinLimit(file.size)) {
+        setApplyError(
+          `El archivo seleccionado supera el tamaño máximo permitido de ${MAX_CV_MB} MB.`,
+        );
         return;
       }
       setUploadedCv({
@@ -419,7 +422,7 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
               <InfoRow
                 icon="document-text-outline"
                 label="Hoja de vida"
-                value={selectedJob.requiresCv ? 'Obligatoria (PDF, máx. 5 MB)' : 'No obligatoria'}
+                value={selectedJob.requiresCv ? `Obligatoria (PDF, máx. ${MAX_CV_MB} MB)` : 'No obligatoria'}
                 last
               />
             </View>
@@ -489,7 +492,7 @@ export const HU04_VacantesView: React.FC<VacantesViewProps> = ({
             <Text style={styles.cvOptionDesc}>
               {uploadedCv
                 ? `Seleccionado: ${uploadedCv.name}`
-                : 'Selecciona un archivo PDF (máximo 5 MB)'}
+                : `Selecciona un archivo PDF (máximo ${MAX_CV_MB} MB)`}
             </Text>
           </View>
         </Pressable>

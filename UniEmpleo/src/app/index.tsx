@@ -537,6 +537,20 @@ export default function HomeScreen() {
     }
   };
 
+  const handleSaveAvailability = async (
+    availability: StudentProfile['availability'],
+  ) => {
+    if (!session || session.user.role !== 'student') {
+      throw new Error('Inicia sesión para guardar tus horarios.');
+    }
+    await updateStudentProfile(session.token, { availability });
+    setStudent((current) =>
+      current
+        ? withSessionIdentity({ ...current, availability }, session.user)
+        : current,
+    );
+  };
+
   const handleUploadCv = async (file: ApiDocument) => {
     if (!session || session.user.role !== 'student') {
       throw new Error('Inicia sesión para subir tu hoja de vida.');
@@ -1135,6 +1149,7 @@ export default function HomeScreen() {
                   <HU09_PerfilView
                     student={student}
                     onUpdateStudent={handleUpdateStudent}
+                    onSaveAvailability={handleSaveAvailability}
                     onUploadCv={handleUploadCv}
                   />
                 )}

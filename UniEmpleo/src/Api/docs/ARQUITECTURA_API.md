@@ -92,4 +92,4 @@ flowchart TD
 3. **Control Anti-Duplicados:**
    - La API bloquea automáticamente cualquier intento de postulación doble por parte de un estudiante a la misma oferta, respondiendo con código HTTP 422.
 4. **Límite de Archivos:**
-   - Los archivos de hojas de vida están limitados a formato PDF con un tamaño máximo de 5 MB.
+   - Los archivos de hojas de vida están limitados a formato PDF con un tamaño máximo de 20 MB.

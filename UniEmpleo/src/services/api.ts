@@ -1,3 +1,5 @@
+import { isCvWithinLimit, MAX_CV_MB } from '@/lib/document-limits';
+
 export class ApiError extends Error {
   readonly status: number;
 
@@ -183,8 +185,11 @@ function assertPdfWithinLimit(file: ApiDocument): void {
   if (!file.name.toLowerCase().endsWith('.pdf') && file.mimeType !== 'application/pdf') {
     throw new ApiError('Selecciona una hoja de vida en formato PDF.', 422);
   }
-  if (file.size !== undefined && file.size !== null && file.size > 5 * 1024 * 1024) {
-    throw new ApiError('El archivo supera el tamaño máximo permitido de 5 MB.', 413);
+  if (!isCvWithinLimit(file.size)) {
+    throw new ApiError(
+      `El archivo supera el tamaño máximo permitido de ${MAX_CV_MB} MB.`,
+      413,
+    );
   }
 }
 

@@ -197,6 +197,9 @@ export async function forwardToLaravel(
       headers,
       body,
       signal: AbortSignal.timeout(15000),
+      // Every proxied response is private to the bearer token, so Next must
+      // never reuse a cached GET across users or across reads.
+      cache: 'no-store',
     });
     const duration = Date.now() - startedAt;
     audit(targetPath, method, upstream.status, duration);
@@ -211,6 +214,7 @@ export async function forwardToLaravel(
         status: upstream.status,
         headers: {
           "Content-Type": "application/pdf",
+          "Cache-Control": "no-store",
           "Content-Disposition": upstream.headers.get("content-disposition") ?? "attachment",
           "X-Content-Type-Options": "nosniff",
         },
@@ -238,7 +242,12 @@ export async function forwardToLaravel(
     if (options.transformResponse && responseData) {
       responseData = options.transformResponse(responseData);
     }
-    return NextResponse.json(responseData, { status: upstream.status });
+    return NextResponse.json(responseData, {
+      status: upstream.status,
+      // Responses depend on the caller's bearer token; never let a shared
+      // cache replay one account's data to another.
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (error: unknown) {
     audit(targetPath, method, 502, Date.now() - startedAt);
     console.error("[Bridge] Falló la comunicación con el backend de empleos.", {

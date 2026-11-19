@@ -15,10 +15,12 @@ interface NotificationsState {
   unreadCount: number;
   isLoading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: (options?: { silent?: boolean }) => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
 }
+
+const BACKGROUND_REFRESH_MS = 60_000;
 
 function readUnreadCount(value: unknown): number {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return 0;
@@ -29,7 +31,8 @@ function readUnreadCount(value: unknown): number {
 /**
  * Notifications belong to the signed-in account, so every role gets its own
  * feed from the same endpoint. The hook keeps the bell badge in sync with the
- * list and degrades to an empty state when the API has nothing to show.
+ * list, refreshes in the background, and degrades to an empty state when the
+ * API has nothing to show.
  */
 export function useNotifications(token: string | null | undefined): NotificationsState {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -37,7 +40,7 @@ export function useNotifications(token: string | null | undefined): Notification
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
     if (!token) {
       setNotifications([]);
       setUnreadCount(0);
@@ -45,8 +48,11 @@ export function useNotifications(token: string | null | undefined): Notification
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    const silent = options?.silent === true;
+    if (!silent) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
       const [listResponse, countResponse] = await Promise.all([
         getNotifications(token),
@@ -54,14 +60,19 @@ export function useNotifications(token: string | null | undefined): Notification
       ]);
       setNotifications(unwrapList<unknown>(listResponse).map(mapNotification));
       setUnreadCount(readUnreadCount(unwrapData(countResponse)));
+      setError(null);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'No fue posible cargar tus notificaciones.',
-      );
+      // A failed background poll keeps the last good feed on screen; explicit
+      // refreshes still surface the problem so the user can retry.
+      if (!silent) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'No fue posible cargar tus notificaciones.',
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [token]);
 
@@ -69,6 +80,28 @@ export function useNotifications(token: string | null | undefined): Notification
     const timer = setTimeout(() => void refresh(), 0);
     return () => clearTimeout(timer);
   }, [refresh]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const interval = setInterval(() => void refresh({ silent: true }), BACKGROUND_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [token, refresh]);
+
+  useEffect(() => {
+    if (!token || typeof window === 'undefined') return;
+
+    const handleFocus = () => void refresh({ silent: true });
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void refresh({ silent: true });
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [token, refresh]);
 
   const markRead = useCallback(
     async (id: string) => {

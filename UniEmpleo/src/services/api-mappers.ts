@@ -441,6 +441,25 @@ export function mapCompanyReports(value: unknown): CompanyReports {
   };
 }
 
+/**
+ * Laravel stores the notification class in `type`
+ * (`App\Notifications\CompanyRejectedNotification`) and the action key inside
+ * `data.type` (`company_rejected`). The UI navigates and picks icons from the
+ * action key, so prefer it and derive a key when historical rows lack it.
+ */
+function notificationActionType(source: JsonRecord, data: JsonRecord): string {
+  const explicit = stringValue(data, 'type') || stringValue(source, 'action_type');
+  if (explicit) return explicit;
+
+  const raw = stringValue(source, 'type') || '';
+  if (!raw) return 'general';
+  const className = raw.split('\\').pop() || raw;
+  return className
+    .replace(/Notification$/, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase() || 'general';
+}
+
 export function mapNotification(value: unknown): AppNotification {
   const source = record(value, 'una notificación');
   const data = nestedRecord(source, 'data');
@@ -452,9 +471,12 @@ export function mapNotification(value: unknown): AppNotification {
 
   return {
     id: requiredString(source, 'id', 'id'),
-    type: stringValue(source, 'type') || stringValue(data, 'type') || 'general',
+    type: notificationActionType(source, data),
     message,
     readAt: typeof source.read_at === 'string' ? source.read_at : null,
     createdAt: stringValue(source, 'created_at'),
+    applicationId: stringValue(data, 'application_id'),
+    companyId: stringValue(data, 'company_id'),
+    status: stringValue(data, 'status'),
   };
 }

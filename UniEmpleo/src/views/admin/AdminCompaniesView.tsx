@@ -21,6 +21,8 @@ interface AdminCompaniesViewProps {
   companies: CompanyProfile[];
   total: number;
   isLoading: boolean;
+  /** Pre-selects a queue when opened from a notification. */
+  initialStatus?: StatusFilter;
   onFilter: (status: StatusFilter) => Promise<void>;
   onSearch: (search: string) => Promise<void>;
   onApproveCompany: (companyId: string) => Promise<void>;
@@ -39,12 +41,13 @@ export function AdminCompaniesView({
   companies,
   total,
   isLoading,
+  initialStatus = 'all',
   onFilter,
   onSearch,
   onApproveCompany,
   onRejectCompany,
 }: AdminCompaniesViewProps) {
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
   const [search, setSearch] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectingCompany, setRejectingCompany] = useState<CompanyProfile | null>(null);

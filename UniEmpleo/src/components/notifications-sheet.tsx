@@ -21,6 +21,8 @@ interface NotificationsSheetProps {
   onRefresh: () => void;
   onMarkRead: (id: string) => Promise<void>;
   onMarkAllRead: () => Promise<void>;
+  /** Opens the section the notification is about. */
+  onOpenNotification: (notification: AppNotification) => void;
 }
 
 const ROLE_COPY: Record<UserRole, { subtitle: string; emptyTitle: string; emptyBody: string }> = {
@@ -41,12 +43,60 @@ const ROLE_COPY: Record<UserRole, { subtitle: string; emptyTitle: string; emptyB
   },
 };
 
-function notificationIcon(type: string): IconName {
-  if (type.includes('company_approved')) return 'shield-checkmark-outline';
-  if (type.includes('company_registration')) return 'business-outline';
-  if (type.includes('new_application')) return 'document-text-outline';
-  if (type.includes('application_status')) return 'megaphone-outline';
-  return 'notifications-outline';
+interface NotificationVisual {
+  icon: IconName;
+  color: string;
+  tint: string;
+  line: string;
+}
+
+function notificationVisual(type: string): NotificationVisual {
+  if (type.includes('company_rejected')) {
+    return {
+      icon: 'alert-circle-outline',
+      color: Brand.red,
+      tint: Brand.redTint,
+      line: Brand.redLine,
+    };
+  }
+  if (type.includes('company_approved')) {
+    return {
+      icon: 'shield-checkmark-outline',
+      color: Brand.greenDark,
+      tint: Brand.greenTint,
+      line: Brand.greenLine,
+    };
+  }
+  if (type.includes('company_resubmitted') || type.includes('company_registration')) {
+    return {
+      icon: 'business-outline',
+      color: Brand.blue,
+      tint: Brand.blueTint,
+      line: Brand.blueLine,
+    };
+  }
+  if (type.includes('new_application')) {
+    return {
+      icon: 'document-text-outline',
+      color: Brand.greenDark,
+      tint: Brand.greenTint,
+      line: Brand.greenLine,
+    };
+  }
+  if (type.includes('application_status')) {
+    return {
+      icon: 'megaphone-outline',
+      color: Brand.blue,
+      tint: Brand.blueTint,
+      line: Brand.blueLine,
+    };
+  }
+  return {
+    icon: 'notifications-outline',
+    color: Brand.slate,
+    tint: Brand.surfaceMuted,
+    line: Brand.line,
+  };
 }
 
 export function NotificationsSheet({
@@ -60,18 +110,23 @@ export function NotificationsSheet({
   onRefresh,
   onMarkRead,
   onMarkAllRead,
+  onOpenNotification,
 }: NotificationsSheetProps) {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const copy = ROLE_COPY[role];
 
-  const handleMarkRead = async (notification: AppNotification) => {
-    if (notification.readAt || processingId) return;
+  const handleSelect = async (notification: AppNotification) => {
+    if (processingId) return;
     setActionError(null);
     setProcessingId(notification.id);
     try {
-      await onMarkRead(notification.id);
+      // Opening a notification marks it as read automatically. Even if the
+      // request fails we still navigate; the next refresh restores the truth.
+      if (!notification.readAt) {
+        await onMarkRead(notification.id);
+      }
     } catch (markError) {
       setActionError(
         markError instanceof Error
@@ -81,6 +136,7 @@ export function NotificationsSheet({
     } finally {
       setProcessingId(null);
     }
+    onOpenNotification(notification);
   };
 
   const handleMarkAll = async () => {
@@ -108,7 +164,7 @@ export function NotificationsSheet({
       icon="notifications-outline"
       closeLabel="Cerrar notificaciones"
       footer={
-        notifications.length > 0 ? (
+        unreadCount > 0 ? (
           <Button
             label={isMarkingAll ? 'Marcando…' : 'Marcar todas como leídas'}
             onPress={() => void handleMarkAll()}
@@ -166,24 +222,30 @@ export function NotificationsSheet({
         <View style={styles.list} accessibilityRole="list">
           {notifications.map((notification) => {
             const unread = !notification.readAt;
+            const visual = notificationVisual(notification.type);
             return (
               <Pressable
                 key={notification.id}
                 accessibilityRole="button"
                 accessibilityLabel={`${unread ? 'No leída. ' : ''}${notification.message}`}
-                accessibilityHint={unread ? 'Marca la notificación como leída' : undefined}
+                accessibilityHint="Abre el apartado relacionado y marca la notificación como leída"
                 accessibilityState={{ disabled: processingId === notification.id }}
-                onPress={() => void handleMarkRead(notification)}
+                onPress={() => void handleSelect(notification)}
                 style={({ pressed }) => [
                   styles.row,
                   unread && styles.rowUnread,
                   pressed && styles.rowPressed,
                 ]}>
-                <View style={[styles.iconWrap, unread && styles.iconWrapUnread]}>
+                <View
+                  style={[
+                    styles.iconWrap,
+                    { backgroundColor: unread ? visual.tint : Brand.surfaceMuted },
+                    { borderColor: unread ? visual.line : Brand.line },
+                  ]}>
                   <Icon
-                    name={notificationIcon(notification.type)}
+                    name={visual.icon}
                     size={18}
-                    color={unread ? Brand.greenDark : Brand.slateSoft}
+                    color={unread ? visual.color : Brand.slateSoft}
                   />
                 </View>
                 <View style={styles.copy}>
@@ -200,6 +262,7 @@ export function NotificationsSheet({
                     ) : null}
                   </View>
                 </View>
+                <Icon name="chevron-forward" size={15} color={Brand.slateFaint} />
               </Pressable>
             );
           })}
@@ -286,10 +349,6 @@ const styles = StyleSheet.create({
     borderColor: Brand.line,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconWrapUnread: {
-    backgroundColor: Brand.surface,
-    borderColor: Brand.greenLine,
   },
   copy: {
     flex: 1,

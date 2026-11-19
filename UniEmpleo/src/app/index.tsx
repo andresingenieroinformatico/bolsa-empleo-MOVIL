@@ -10,6 +10,7 @@ import {
   AdminSummary,
   AdminTab,
   AdminUser,
+  AppNotification,
   Application,
   ApplicationStatus,
   CompanyProfile,
@@ -184,6 +185,10 @@ export default function HomeScreen() {
   const [adminCompanies, setAdminCompanies] = useState<CompanyProfile[]>([]);
   const [adminCompaniesTotal, setAdminCompaniesTotal] = useState(0);
   const [adminSectionLoading, setAdminSectionLoading] = useState(false);
+  const [adminCompaniesInitialStatus, setAdminCompaniesInitialStatus] = useState<
+    CompanyProfile['status'] | 'all'
+  >('all');
+  const [adminCompaniesViewKey, setAdminCompaniesViewKey] = useState(0);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [showLanding, setShowLanding] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -470,7 +475,6 @@ export default function HomeScreen() {
       setApplications(applicationsResult.items.map((item) => mapApplication(item)));
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -486,7 +490,6 @@ export default function HomeScreen() {
         session?.user.role === 'student' ? session.token : undefined,
       );
     } catch (error) {
-      showApiError(error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -505,7 +508,6 @@ export default function HomeScreen() {
         session?.user.role === 'student' ? session.token : undefined,
       );
     } catch (error) {
-      showApiError(error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -531,7 +533,6 @@ export default function HomeScreen() {
       );
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -550,7 +551,6 @@ export default function HomeScreen() {
       setApiError(null);
       return updated;
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -580,7 +580,6 @@ export default function HomeScreen() {
       );
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -592,7 +591,6 @@ export default function HomeScreen() {
       await loadRoleData(session);
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -604,7 +602,6 @@ export default function HomeScreen() {
       await loadRoleData(session);
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -633,7 +630,6 @@ export default function HomeScreen() {
       });
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -664,7 +660,6 @@ export default function HomeScreen() {
       await loadRoleData(session);
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -676,7 +671,6 @@ export default function HomeScreen() {
       await loadRoleData(session);
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -737,7 +731,6 @@ export default function HomeScreen() {
     try {
       await action();
     } catch (error) {
-      showApiError(error);
       throw error;
     } finally {
       setAdminSectionLoading(false);
@@ -748,6 +741,8 @@ export default function HomeScreen() {
     status: 'all' | 'pending' | 'approved' | 'rejected' | 'inactive',
   ) => {
     adminCompanyFilters.current.status = status;
+    // Keeps the chip selection aligned if the view is remounted later.
+    setAdminCompaniesInitialStatus(status);
     await runAdminSection(refreshAdminCompanies);
   };
 
@@ -853,7 +848,6 @@ export default function HomeScreen() {
       await saveAuthSession(nextSession);
       setApiError(null);
     } catch (error) {
-      showApiError(error);
       throw error;
     }
   };
@@ -877,8 +871,9 @@ export default function HomeScreen() {
     if (session) {
       try {
         await logout(session.token);
-      } catch (error) {
-        showApiError(error);
+      } catch {
+        // The local session is cleared regardless, so a failed server logout
+        // must not interrupt the user with an extra error pop-up.
       }
     }
     await clearAuthSession();
@@ -935,6 +930,64 @@ export default function HomeScreen() {
     setShowLanding(false);
     setSessionNotice(null);
     void notifications.refresh();
+  };
+
+  /**
+   * A notification is only useful if it takes the reader to the place where
+   * they must act. The sheet marks the row as read first, then this handler
+   * closes the sheet and opens the role's matching section.
+   */
+  const handleOpenNotification = (notification: AppNotification) => {
+    setShowNotifications(false);
+    if (!session) return;
+
+    const role = session.user.role;
+    setCurrentRole(role);
+    setShowLanding(false);
+    setSessionNotice(null);
+
+    if (role === 'student') {
+      if (notification.type === 'application_status') {
+        setStudentTab('postulaciones');
+        // The process may have changed after the notification was created.
+        void loadRoleData(session);
+      } else {
+        setStudentTab('resumen');
+      }
+      void notifications.refresh({ silent: true });
+      return;
+    }
+
+    if (role === 'company') {
+      if (notification.type === 'new_application') {
+        setCompanyTab('candidatos');
+      } else if (notification.type === 'company_rejected') {
+        setCompanyTab('perfil');
+      } else if (notification.type === 'company_approved') {
+        setCompanyTab('vacantes');
+      } else {
+        setCompanyTab('resumen');
+      }
+      void notifications.refresh({ silent: true });
+      return;
+    }
+
+    if (
+      notification.type === 'company_resubmitted' ||
+      notification.type === 'company_registration'
+    ) {
+      // These reviews always start from the pending queue.
+      adminCompanyFilters.current = { status: 'pending', search: '' };
+      setAdminCompaniesInitialStatus('pending');
+      setAdminCompaniesViewKey((current) => current + 1);
+      setAdminTab('empresas');
+      void notifications.refresh({ silent: true });
+      void runAdminSection(refreshAdminCompanies);
+      return;
+    }
+
+    setAdminTab('resumen');
+    void notifications.refresh({ silent: true });
   };
 
   const handleOpenLogin = (role: UserRole) => {
@@ -1157,6 +1210,8 @@ export default function HomeScreen() {
                 )}
                 {currentRole === 'admin' && hasActiveRole && adminTab === 'empresas' && (
                   <AdminCompaniesView
+                    key={`admin-companies-${adminCompaniesViewKey}`}
+                    initialStatus={adminCompaniesInitialStatus}
                     companies={adminCompanies}
                     total={adminCompaniesTotal}
                     isLoading={adminSectionLoading}
@@ -1207,7 +1262,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {apiError && (
+      {apiError && !showLanding && (
         <View
           pointerEvents="box-none"
           style={[
@@ -1279,6 +1334,7 @@ export default function HomeScreen() {
         onRefresh={() => void notifications.refresh()}
         onMarkRead={notifications.markRead}
         onMarkAllRead={notifications.markAllRead}
+        onOpenNotification={handleOpenNotification}
       />
     </SafeAreaView>
   );

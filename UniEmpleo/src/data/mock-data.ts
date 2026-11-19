@@ -161,11 +161,16 @@ export interface CompanyReports {
 }
 
 export interface AppNotification {
-  id: string;
+  /** Action key stored in the notification payload, e.g. `company_rejected`. */
   type: string;
+  id: string;
   message: string;
   readAt?: string | null;
   createdAt?: string;
+  applicationId?: string;
+  companyId?: string;
+  /** Application status that triggered an `application_status` notification. */
+  status?: string;
 }
 
 export const INITIAL_STUDENT: StudentProfile = {

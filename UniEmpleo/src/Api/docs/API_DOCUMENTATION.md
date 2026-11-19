@@ -114,11 +114,11 @@ empresas y administradores ingresan con correo y contraseña.
 }
 ```
 
-### 2.3 Subir Hoja de Vida en PDF (Hasta 5 MB)
+### 2.3 Subir Hoja de Vida en PDF (Hasta 20 MB)
 - **Método:** `POST`
 - **URL:** `/api/v1/students/upload-cv` (o `/api/v1/student/profile/cv`)
 - **Headers:** `Authorization: Bearer <TOKEN_ESTUDIANTE>`, `Content-Type: multipart/form-data`
-- **FormData:** Clave `cv` (archivo `.pdf`, máx 5MB).
+- **FormData:** Clave `cv` (archivo `.pdf`, máx 20MB).
 - El gateway valida el tamaño máximo y la firma `%PDF-` del archivo antes de
   reenviarlo al backend.
 - **Respuesta Exitosa (200 OK):**

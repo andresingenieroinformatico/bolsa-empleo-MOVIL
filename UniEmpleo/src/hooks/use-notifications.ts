@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 import { AppNotification } from '@/data/mock-data';
 import {
   getNotifications,
@@ -89,18 +90,37 @@ export function useNotifications(token: string | null | undefined): Notification
   }, [token, refresh]);
 
   useEffect(() => {
-    if (!token || typeof window === 'undefined') return;
+    if (!token) return;
 
-    const handleFocus = () => void refresh({ silent: true });
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') void refresh({ silent: true });
-    };
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
+    const refreshSilently = () => void refresh({ silent: true });
+
+    if (Platform.OS === 'web') {
+      if (
+        typeof window === 'undefined' ||
+        typeof window.addEventListener !== 'function' ||
+        typeof document === 'undefined'
+      ) {
+        return;
+      }
+
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') refreshSilently();
+      };
+      window.addEventListener('focus', refreshSilently);
+      document.addEventListener('visibilitychange', handleVisibility);
+      return () => {
+        window.removeEventListener('focus', refreshSilently);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
+    }
+
+    // React Native has no DOM events: refresh when the app returns to the
+    // foreground instead. `window` exists in the native runtime but has no
+    // `addEventListener`, so the DOM branch must never run here.
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshSilently();
+    });
+    return () => subscription.remove();
   }, [token, refresh]);
 
   const markRead = useCallback(

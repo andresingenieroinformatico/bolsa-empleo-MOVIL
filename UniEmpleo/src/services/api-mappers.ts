@@ -176,6 +176,7 @@ export function mapStudentProfile(value: unknown): StudentProfile {
   const name = stringValue(source, 'name') || stringValue(user, 'name') || '';
   const email = stringValue(source, 'email') || stringValue(user, 'email') || '';
   const cvPath = stringValue(data, 'cv_path', 'cv_url');
+  const cvSizeBytes = Number(data.cv_size_bytes ?? data.cv_size);
 
   return {
     id: stringValue(data, 'id') || stringValue(source, 'id') || '',
@@ -191,7 +192,10 @@ export function mapStudentProfile(value: unknown): StudentProfile {
     cvFile: cvPath
       ? {
           name: cvPath.split(/[\\/]/).pop() || 'Hoja de vida',
-          sizeMb: 0,
+          sizeMb:
+            Number.isFinite(cvSizeBytes) && cvSizeBytes > 0
+              ? Math.round((cvSizeBytes / (1024 * 1024)) * 10) / 10
+              : undefined,
           uploadDate: stringValue(data, 'cv_uploaded_at', 'updated_at') || '',
         }
       : undefined,

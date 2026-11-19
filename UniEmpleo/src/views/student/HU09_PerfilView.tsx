@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import * as DocumentPicker from 'expo-document-picker';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StudentProfile } from '@/data/mock-data';
 import { ApiDocument } from '@/services/api';
+import { isCvWithinLimit, MAX_CV_MB } from '@/lib/document-limits';
 import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
 import { Icon } from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 interface PerfilViewProps {
   student: StudentProfile;
   onUpdateStudent: (updated: StudentProfile) => Promise<void>;
+  onSaveAvailability: (availability: StudentProfile['availability']) => Promise<void>;
   onUploadCv: (file: ApiDocument) => Promise<StudentProfile>;
 }
 
@@ -27,6 +29,7 @@ const SLOTS = [
 export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   student,
   onUpdateStudent,
+  onSaveAvailability,
   onUploadCv,
 }) => {
   const [phone, setPhone] = useState(student.phone);
@@ -41,13 +44,29 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
   const [cvError, setCvError] = useState<string | null>(null);
   const [cvSuccess, setCvSuccess] = useState<string | null>(null);
   const [isUploadingCv, setIsUploadingCv] = useState(false);
+  const [availabilityState, setAvailabilityState] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const availabilitySaveSequence = useRef(0);
 
   const toggleSlot = (day: string, slot: string) => {
     const currentSlots = availability[day] || [];
     const updated = currentSlots.includes(slot)
       ? currentSlots.filter((entry) => entry !== slot)
       : [...currentSlots, slot];
-    setAvailability({ ...availability, [day]: updated });
+    const nextAvailability = { ...availability, [day]: updated };
+    setAvailability(nextAvailability);
+
+    // Persist immediately so a selection is never lost when leaving the tab.
+    const sequence = ++availabilitySaveSequence.current;
+    setAvailabilityState('saving');
+    onSaveAvailability(nextAvailability)
+      .then(() => {
+        if (sequence === availabilitySaveSequence.current) setAvailabilityState('saved');
+      })
+      .catch(() => {
+        if (sequence === availabilitySaveSequence.current) setAvailabilityState('error');
+      });
   };
 
   const handleSaveProfile = async () => {
@@ -87,8 +106,8 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
         setCvError('El archivo seleccionado no es un PDF.');
         return;
       }
-      if (file.size !== undefined && file.size > 5 * 1024 * 1024) {
-        setCvError('El archivo supera el tamaño máximo permitido de 5 MB.');
+      if (!isCvWithinLimit(file.size)) {
+        setCvError(`El archivo supera el tamaño máximo permitido de ${MAX_CV_MB} MB.`);
         return;
       }
 
@@ -246,6 +265,21 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
             <Text style={styles.legendText}>No disponible</Text>
           </View>
         </View>
+
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[
+            styles.availabilityHint,
+            availabilityState === 'error' && styles.availabilityHintError,
+          ]}>
+          {availabilityState === 'saving'
+            ? 'Guardando horarios…'
+            : availabilityState === 'saved'
+              ? 'Horarios guardados.'
+              : availabilityState === 'error'
+                ? 'No se pudieron guardar los horarios. Intenta de nuevo.'
+                : 'Cada cambio se guarda automáticamente.'}
+        </Text>
       </View>
 
       <View style={styles.section}>
@@ -253,7 +287,7 @@ export const HU09_PerfilView: React.FC<PerfilViewProps> = ({
           overline="Hoja de vida"
           title="Tu CV en el perfil"
           subtitle="Se reutiliza al postularte y te ahorra adjuntarlo en cada oferta."
-          action={<Text style={styles.formatHint}>PDF · máx. 5 MB</Text>}
+          action={<Text style={styles.formatHint}>PDF · máx. {MAX_CV_MB} MB</Text>}
         />
 
         {cvFile ? (
@@ -515,6 +549,14 @@ const styles = StyleSheet.create({
     ...Type.caption,
     fontSize: 11,
     color: Brand.slate,
+  },
+  availabilityHint: {
+    ...Type.caption,
+    marginTop: Space.sm,
+    color: Brand.greenDark,
+  },
+  availabilityHintError: {
+    color: Brand.red,
   },
   formatHint: {
     ...Type.overline,

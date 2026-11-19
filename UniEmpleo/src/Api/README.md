@@ -1,6 +1,6 @@
 # Backend API REST Bridge - Bolsa de Empleo UNIPAZ (UniEmpleo)
 
-API REST oficial desarrollada con **Next.js 14 (App Router)**, **Node.js**, **TypeScript** y **Prisma ORM**, configurada como capa puente (API Gateway) para conectar la aplicación móvil **UniEmpleo** (React Native / Expo) con el backend central existente en **Laravel 12** (`http://127.0.0.1:8000`).
+API REST oficial desarrollada con **Next.js 16 (App Router)**, **Node.js**, **TypeScript** y **Prisma ORM**, configurada como capa puente (API Gateway) para conectar la aplicación móvil **UniEmpleo** (React Native / Expo) con el backend central existente en **Laravel 12** (`https://bolsa-empleo-unipaz.onrender.com`).
 
 ---
 
@@ -20,8 +20,11 @@ API REST oficial desarrollada con **Next.js 14 (App Router)**, **Node.js**, **Ty
 
 ## 🚀 Comandos para Iniciar Ambos Servidores
 
-### Terminal 1: Backend Central de Laravel (Puerto 8000)
-Ubicarse en el directorio del proyecto Laravel. La primera vez hay que crear el
+### Terminal 1: Backend Central de Laravel
+El gateway apunta por defecto al backend desplegado en Render mediante
+`LARAVEL_API_URL` en `.env.local`. No hace falta iniciar Laravel localmente.
+Para desarrollo offline, se puede cambiar esa variable a `http://127.0.0.1:8000`,
+ubicarse en el directorio del proyecto Laravel y crear el
 `.env`, la base SQLite y sembrar los datos de prueba:
 ```powershell
 cd <ruta-del-backend-Laravel>
@@ -40,9 +43,9 @@ cd public
 php -S 127.0.0.1:8000 -t . "..\vendor\laravel\framework\src\Illuminate\Foundation\resources\server.php"
 ```
 
-Verifica el backend antes de arrancar el gateway:
+Verifica el backend remoto antes de arrancar el gateway:
 ```powershell
-Invoke-WebRequest http://127.0.0.1:8000/api/v1/jobs -UseBasicParsing
+Invoke-WebRequest https://bolsa-empleo-unipaz.onrender.com/api/v1/jobs -UseBasicParsing
 ```
 
 ### Terminal 2: API REST Oficial en Next.js (Puerto 3000)

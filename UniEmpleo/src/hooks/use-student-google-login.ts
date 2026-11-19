@@ -26,11 +26,7 @@ export function useStudentGoogleLogin({ onAuthenticated }: StudentGoogleLoginPro
       scopes: ['openid', 'email', 'profile'],
       redirectUri: AuthSession.makeRedirectUri({ scheme: 'uniempleo' }),
       usePKCE: true,
-      // Fuerza el selector de cuentas y limita la vista a la comunidad UNIPAZ.
-      extraParams: {
-        prompt: 'select_account',
-        hd: 'unipaz.edu.co',
-      },
+      prompt: AuthSession.Prompt.SelectAccount,
     },
     discovery,
   );

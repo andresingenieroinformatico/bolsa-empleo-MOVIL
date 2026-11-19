@@ -30,7 +30,7 @@ export async function GET() {
       status: laravelOnline ? "online" : "degraded",
       server_time: new Date().toISOString(),
       architecture: {
-        gateway: "Next.js 14 (App Router / Node.js) en puerto 3000",
+        gateway: "Next.js 16 (App Router / Node.js) en puerto 3000",
         backend_core: "Laravel 12 / PHP en puerto 8000",
         orm: "Prisma ORM (Auditoría y Cache) + Eloquent (Core)",
         database: "MySQL bolsa_empleo_unipaz & bolsa_empleo",

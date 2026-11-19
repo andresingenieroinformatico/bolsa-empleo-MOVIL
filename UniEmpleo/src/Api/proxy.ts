@@ -47,7 +47,7 @@ function applySecurityHeaders(response: NextResponse, origin: string | null) {
   return response;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const origin = request.headers.get("origin");
   if (request.method === "OPTIONS") {
     const permitted = !origin || allowedOrigins().has(origin);

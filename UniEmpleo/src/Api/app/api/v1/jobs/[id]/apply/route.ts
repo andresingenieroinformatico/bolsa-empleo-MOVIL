@@ -6,12 +6,13 @@ export const dynamic = "force-dynamic";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const invalidId = invalidIdResponse(params.id);
+  const { id } = await params;
+  const invalidId = invalidIdResponse(id);
   if (invalidId) return invalidId;
   return forwardToLaravel(request, {
-    path: `/api/v1/jobs/${params.id}/apply`,
+    path: `/api/v1/jobs/${id}/apply`,
     method: "POST",
   });
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -101,9 +102,12 @@ export const HU01_LoginModal: React.FC<LoginModalProps> = ({
             accessibilityLabel="Ir a la página principal de UniEmpleo"
             onPress={onGoHome}
             style={({ pressed }) => [styles.brand, pressed && styles.pressed]}>
-            <View style={styles.brandMark}>
-              <Icon name="briefcase" size={17} color={Brand.surface} />
-            </View>
+            <Image
+              accessibilityLabel="Logo de UniEmpleo"
+              resizeMode="contain"
+              source={require('../../assets/images/uniempleo-logo.png')}
+              style={styles.brandLogo}
+            />
             <View>
               <Text style={styles.brandTitle}>UniEmpleo</Text>
               <Text style={styles.brandSubtitle}>UNIPAZ · BOLSA DE EMPLEO</Text>
@@ -314,13 +318,11 @@ const styles = StyleSheet.create({
     gap: 10,
     flexShrink: 1,
   },
-  brandMark: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.lg,
-    backgroundColor: Brand.green,
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.surface,
   },
   brandTitle: {
     ...Type.heading,

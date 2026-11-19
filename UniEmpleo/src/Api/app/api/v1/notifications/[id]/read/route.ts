@@ -6,27 +6,28 @@ export const dynamic = "force-dynamic";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  if (params.id === "all") {
+  const { id } = await params;
+  if (id === "all") {
     return forwardToLaravel(request, {
       path: "/api/v1/notifications/mark-all-read",
       method: "POST",
     });
   }
 
-  const invalidId = invalidNotificationIdResponse(params.id);
+  const invalidId = invalidNotificationIdResponse(id);
   if (invalidId) return invalidId;
 
   return forwardToLaravel(request, {
-    path: `/api/v1/notifications/${params.id}/read`,
+    path: `/api/v1/notifications/${id}/read`,
     method: "PATCH",
   });
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return PUT(request, { params });
 }

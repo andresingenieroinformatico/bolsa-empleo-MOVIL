@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { UserRole } from '@/data/mock-data';
 import { Brand, Radius, Shadows, Type } from '@/constants/theme';
 import { Icon, IconName } from '@/components/ui/icon';
@@ -41,9 +41,12 @@ export const RoleHeader: React.FC<RoleHeaderProps> = ({
           accessibilityLabel="Ir a la página de inicio"
           onPress={onGoHome}
           style={({ pressed }) => [styles.brand, pressed && styles.pressed]}>
-          <View style={styles.mark}>
-            <Icon name="briefcase" size={17} color={Brand.surface} />
-          </View>
+          <Image
+            accessibilityLabel="Logo de UniEmpleo"
+            resizeMode="contain"
+            source={require('../../assets/images/uniempleo-logo.png')}
+            style={styles.brandLogo}
+          />
           <View style={styles.brandCopy}>
             <Text style={styles.brandTitle}>UniEmpleo</Text>
             <Text style={styles.brandSubtitle}>UNIPAZ · Barrancabermeja</Text>
@@ -129,13 +132,11 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
   },
-  mark: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.lg,
-    backgroundColor: Brand.green,
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.surface,
   },
   brandCopy: {
     gap: 1,

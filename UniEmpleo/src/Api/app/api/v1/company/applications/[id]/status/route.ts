@@ -6,12 +6,13 @@ export const dynamic = "force-dynamic";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const invalidId = invalidIdResponse(params.id);
+  const { id } = await params;
+  const invalidId = invalidIdResponse(id);
   if (invalidId) return invalidId;
   return forwardToLaravel(request, {
-    path: `/api/v1/company/applications/${params.id}/status`,
+    path: `/api/v1/company/applications/${id}/status`,
     method: "PUT",
   });
 }

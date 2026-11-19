@@ -7,20 +7,22 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const invalidId = invalidIdResponse(params.id);
+  const { id } = await params;
+  const invalidId = invalidIdResponse(id);
   if (invalidId) return invalidId;
   return forwardToLaravel(request, {
-    path: `/api/v1/jobs/${params.id}`,
+    path: `/api/v1/jobs/${id}`,
   });
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const invalidId = invalidIdResponse(params.id);
+  const { id } = await params;
+  const invalidId = invalidIdResponse(id);
   if (invalidId) return invalidId;
   let parsed: unknown;
   try {
@@ -43,7 +45,7 @@ export async function PUT(
   }
 
   return forwardToLaravel(request, {
-    path: `/api/v1/company/jobs/${params.id}`,
+    path: `/api/v1/company/jobs/${id}`,
     method: "PUT",
     body: mapped.data,
   });

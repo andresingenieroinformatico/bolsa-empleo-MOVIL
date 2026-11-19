@@ -204,9 +204,18 @@ async function runTests() {
     headers: { Authorization: `Bearer ${studentToken}`, Accept: "application/json" },
   });
   const studentAppsData = await studentAppsRes.json();
-  const rawApps = Array.isArray(studentAppsData.data) ? studentAppsData.data : (studentAppsData.data?.data || studentAppsData.data?.applications || []);
-  const currentApp = rawApps.find((a: any) => a.id === applicationId);
-  if (currentApp && "company_notes" in currentApp && currentApp.company_notes !== undefined && currentApp.company_notes !== null) {
+  const rawApps: unknown[] = Array.isArray(studentAppsData.data)
+    ? studentAppsData.data
+    : studentAppsData.data?.data || studentAppsData.data?.applications || [];
+  const currentApp = rawApps.find(
+    (application): application is Record<string, unknown> =>
+      application !== null &&
+      typeof application === "object" &&
+      !Array.isArray(application) &&
+      "id" in application &&
+      application.id === applicationId,
+  );
+  if (currentApp && currentApp.company_notes !== undefined && currentApp.company_notes !== null) {
     throw new Error("CRÍTICO: company_notes fue expuesto al estudiante.");
   }
   console.log("  ✅ Seguridad verificada: 'company_notes' NO se expone en la respuesta del estudiante.\n");

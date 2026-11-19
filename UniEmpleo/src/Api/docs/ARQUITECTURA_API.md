@@ -13,7 +13,7 @@ flowchart TD
         MobileApp["App React Native (Expo Router)<br/>Puerto configurable"]
     end
 
-    subgraph Gateway["API REST Oficial (Next.js 14 / Node.js)"]
+    subgraph Gateway["API REST Oficial (Next.js 16 / Node.js)"]
         NextRoutes["Next.js App Router (app/api/v1/)<br/>Puerto: 3000"]
         Bridge["HTTP Bridge (lib/laravel-bridge.ts)<br/>Reenvío de Tokens Bearer, Headers y FormData"]
         PrismaLogs[("Prisma ORM 5.x<br/>Auditoría y Métricas (api_audit_logs)")]

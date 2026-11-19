@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export function successResponse<T = any>(
+export function successResponse<T = unknown>(
   message: string = "Operación realizada correctamente",
   data: T = {} as T,
   status: number = 200
@@ -17,7 +17,7 @@ export function successResponse<T = any>(
 
 export function errorResponse(
   message: string = "Error en la operación",
-  errors: Record<string, any> = {},
+  errors: Record<string, unknown> = {},
   status: number = 400
 ) {
   return NextResponse.json(

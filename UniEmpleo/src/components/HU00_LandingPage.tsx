@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { JobOffer, UserRole } from '@/data/mock-data';
 import { SkeletonBlock } from '@/components/SkeletonBlock';
 import { Brand, Radius, Shadows, Space, Type } from '@/constants/theme';
@@ -66,9 +66,12 @@ export function HU00_LandingPage({
       <View style={[styles.shell, wide && styles.wideShell]}>
         <View style={styles.navigation}>
           <View style={styles.brandLockup}>
-            <View style={styles.brandMark}>
-              <Icon name="briefcase" size={18} color={Brand.surface} />
-            </View>
+            <Image
+              accessibilityLabel="Logo de UniEmpleo"
+              resizeMode="contain"
+              source={require('../../assets/images/uniempleo-logo.png')}
+              style={styles.brandLogo}
+            />
             <View>
               <Text style={styles.brandName}>UniEmpleo</Text>
               <Text style={styles.brandMeta}>UNIPAZ · Barrancabermeja</Text>
@@ -419,13 +422,11 @@ const styles = StyleSheet.create({
     gap: 10,
     flexShrink: 1,
   },
-  brandMark: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.lg,
-    backgroundColor: Brand.green,
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandLogo: {
+    width: 46,
+    height: 46,
+    borderRadius: Radius.md,
+    backgroundColor: Brand.surface,
   },
   brandName: {
     ...Type.heading,

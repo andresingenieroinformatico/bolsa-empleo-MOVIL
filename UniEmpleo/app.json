@@ -6,9 +6,14 @@
     "orientation": "portrait",
     "scheme": "uniempleo",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/images/uniempleo-icon.png",
     "android": {
       "package": "com.unipaz.uniempleo",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/uniempleo-adaptive-foreground.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {
       "output": "static"
@@ -18,7 +23,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0D1B4C"
+          "image": "./assets/images/uniempleo-logo.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
         }
       ],
       "expo-secure-store"

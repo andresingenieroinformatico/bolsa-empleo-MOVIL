@@ -3,6 +3,7 @@ import test from "node:test";
 import { NextRequest } from "next/server";
 import { POST as login } from "../app/api/v1/auth/login/route";
 import { GET as getMe } from "../app/api/v1/auth/me/route";
+import { GET as getJob } from "../app/api/v1/jobs/[id]/route";
 import {
   addMobileDeviceName,
   normalizeLaravelResponse,
@@ -149,6 +150,42 @@ test("forwards the gateway's auth/me alias to Laravel's /me endpoint", async () 
     assert.deepEqual(await response.json(), {
       success: true,
       data: { id: 8, name: "Student", role: "student" },
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.LARAVEL_API_URL;
+    else process.env.LARAVEL_API_URL = originalUrl;
+  }
+});
+
+test("forwards dynamic job routes using Next's asynchronous route params", async () => {
+  const originalUrl = process.env.LARAVEL_API_URL;
+  const originalFetch = globalThis.fetch;
+  process.env.LARAVEL_API_URL = "https://laravel.example.test";
+  let requestUrl = "";
+  let authorization = "";
+  globalThis.fetch = async (input, init) => {
+    requestUrl = String(input);
+    authorization = new Headers(init?.headers).get("Authorization") ?? "";
+    return new Response(
+      JSON.stringify({ data: { id: 42, title: "Desarrollador" } }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  try {
+    const response = await getJob(
+      new NextRequest("https://gateway.example.test/api/v1/jobs/42", {
+        headers: { Authorization: "Bearer student-token" },
+      }),
+      { params: Promise.resolve({ id: "42" }) },
+    );
+
+    assert.equal(requestUrl, "https://laravel.example.test/api/v1/jobs/42");
+    assert.equal(authorization, "Bearer student-token");
+    assert.deepEqual(await response.json(), {
+      success: true,
+      data: { id: 42, title: "Desarrollador" },
     });
   } finally {
     globalThis.fetch = originalFetch;

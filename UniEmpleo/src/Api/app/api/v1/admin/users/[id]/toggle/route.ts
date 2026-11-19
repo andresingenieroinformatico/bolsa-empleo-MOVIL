@@ -6,13 +6,14 @@ export const dynamic = "force-dynamic";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const invalidId = invalidIdResponse(params.id);
+  const { id } = await params;
+  const invalidId = invalidIdResponse(id);
   if (invalidId) return invalidId;
 
   return forwardToLaravel(request, {
-    path: `/api/v1/admin/users/${params.id}/toggle`,
+    path: `/api/v1/admin/users/${id}/toggle`,
     method: "PATCH",
   });
 }

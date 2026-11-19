@@ -6,9 +6,10 @@ export const dynamic = "force-dynamic";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const invalidId = invalidIdResponse(params.id);
+  const { id } = await params;
+  const invalidId = invalidIdResponse(id);
   if (invalidId) return invalidId;
   let body: Record<string, unknown> = {};
   if (request.headers.get("content-type")?.includes("json")) {
@@ -62,14 +63,14 @@ export async function PUT(
     }
 
     return forwardToLaravel(request, {
-      path: `/api/v1/admin/companies/${params.id}/reject`,
+      path: `/api/v1/admin/companies/${id}/reject`,
       method: "POST",
       body: { reason },
     });
   }
 
   return forwardToLaravel(request, {
-    path: `/api/v1/admin/companies/${params.id}/approve`,
+    path: `/api/v1/admin/companies/${id}/approve`,
     method: "POST",
     // The body was already read above, so forward an explicit payload instead of
     // letting the bridge read the consumed request stream again.
@@ -79,9 +80,10 @@ export async function PUT(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const invalidId = invalidIdResponse(params.id);
+  const { id } = await params;
+  const invalidId = invalidIdResponse(id);
   if (invalidId) return invalidId;
   return PUT(request, { params });
 }

@@ -4,8 +4,8 @@ import prisma from "./prisma";
 export interface BridgeOptions {
   path?: string;
   method?: string;
-  body?: any;
-  transformResponse?: (data: any) => any;
+  body?: unknown;
+  transformResponse?: (data: unknown) => unknown;
   queryParams?: Record<string, string | number | boolean | undefined | null>;
   /** Query params that must not be forwarded upstream (e.g. download tokens). */
   dropQuery?: string[];

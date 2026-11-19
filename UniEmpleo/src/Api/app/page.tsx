@@ -2,7 +2,7 @@ export default function HomePage() {
   return (
     <main style={{ padding: "3rem", maxWidth: "800px", margin: "0 auto", lineHeight: "1.6" }}>
       <h1>Bolsa de Empleo UNIPAZ - Backend API REST</h1>
-      <p>Servidor activo en <strong>Next.js 14 (App Router)</strong> con <strong>Prisma ORM</strong> y <strong>MySQL</strong>.</p>
+      <p>Servidor activo en <strong>Next.js 16 (App Router)</strong> con <strong>Prisma ORM</strong> y <strong>MySQL</strong>.</p>
       <h2>Endpoints Base de la API v1:</h2>
       <ul>
         <li><code>GET /api/v1</code> - Estado y módulos de la API</li>
